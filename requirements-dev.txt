@@ -1,0 +1,11 @@
+numpy
+pandas
+pyarrow
+matplotlib
+astropy
+ipywidgets
+healpy
+nbformat
+nbclient
+ipykernel
+pytest
