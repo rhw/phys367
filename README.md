@@ -1,6 +1,6 @@
 # Physics 367: Astrophysical Data Analysis with the Rubin Observatory (Autumn 2026, Stanford)
 
-Welcome to Physics 367! In this course, you will work with simulated observational data from the Rubin Observatory's Legacy Survey of Space and Time (LSST) to explore the fundamentals of astrophysical data analysis.
+Welcome to Physics 367! In this course, you will work hands-on with real Rubin Observatory data (Data Preview 1 and early Data Preview 2 on the Rubin Science Platform) as well as public Legacy Survey of Space and Time (LSST) survey simulations to explore the fundamentals of astrophysical data analysis.
 
 For course details and lecture materials, visit: [Physics 367 Course Page](https://web.stanford.edu/group/gfc/Fall26_367/)
 
@@ -8,7 +8,10 @@ For course details and lecture materials, visit: [Physics 367 Course Page](https
 
 ## Week 2: First Steps with Survey Data
 
-<!-- COLAB-BADGES -->
+**2A · Survey strategy → science** (due Mon Oct 5)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/rhw/phys367/blob/main/week2/A_survey_strategy.ipynb)
+
+2B · Camera → science: coming Wednesday Sep 30.
 
 ### Run Locally
 
