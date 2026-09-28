@@ -1,8 +1,6 @@
-# Physics 367: Astrophysical Data Analysis with the Rubin Observatory
+# Physics 367: Astrophysical Data Analysis with the Rubin Observatory (Autumn 2026, Stanford)
 
-**Stanford University, Autumn 2026**
-
-Welcome to Physics 367! In this course, you will work with simulated observational data from the Rubin Observatory's Vera Rubin Survey (a precursor to the LSST) to explore the fundamentals of astrophysical data analysis.
+Welcome to Physics 367! In this course, you will work with simulated observational data from the Rubin Observatory's Legacy Survey of Space and Time (LSST) to explore the fundamentals of astrophysical data analysis.
 
 For course details and lecture materials, visit: [Physics 367 Course Page](https://web.stanford.edu/group/gfc/Fall26_367/)
 
@@ -52,10 +50,10 @@ Upload your hand-in cell output (figure + text) as a PDF or image file to Canvas
 
 ## About the Data
 
-The survey simulation data included in this repository are **publicly available synthetic observations** generated for educational purposes. They are not Rubin Observatory proprietary data, so you are welcome to use any tools (including generative AI) to work with them.
+The survey simulation data in this repository are public; they are not Rubin data products, so the course's rules about not uploading Rubin data to external AI services do not apply to them. (Please still note any AI tools you use in your hand-in.)
 
 ---
 
 ## Support
 
-For questions, contact your instructor or the course TAs on Canvas.
+Questions: ask in the course Slack channel #fall2026-367-rubindata.
