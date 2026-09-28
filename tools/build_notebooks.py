@@ -397,8 +397,8 @@ PART2_CELLS = [
     - **points**: every visit that covers one of a few named sky positions.
     - **budget**: how the visits and open-shutter hours split among the survey's programs.
 
-    To build these we treated each visit as a circle of radius 1.75° around the pointing centre and
-    ignored the gaps between CCDs. Real coverage is a few percent patchier.
+    To build these we treated each visit as a circle of radius 1.75° around the pointing centre;
+    chip gaps are ignored.
 
     The coadded depth in each pixel uses the same formula as Part 1, but with each visit's actual
     $m_5$ instead of a single number:
@@ -521,6 +521,8 @@ PART2_CELLS = [
     Part 1 assumed every r-band visit reaches 24.7 (Ivezić et al. 2019: dark sky, zenith). Across the
     full simulation, the median r-band visit reaches 24.06 (from the full simulation). The cell below
     uses the points file: every r-band main-survey visit that covers one of the named positions.
+    The points file covers only the named positions (including star fields like 47 Tuc and the LMC),
+    so these medians are a sample of the sky, not the whole survey.
     """),
     _c("code", """
     def real_vs_worksheet(band="r", category="main"):
@@ -628,15 +630,15 @@ PART2_CELLS = [
         return float((y1.min(axis=1) >= min_visits).sum() * PIXEL_AREA)
 
     print(f"Area with >= 6 Year-1 visits in every band: {year1_coadd_area(6):,.0f} deg^2 "
-          "(from the maps extract; nominal survey, no downtime, 1.75-deg circular footprint)")
+          "(from the maps extract of the baseline v5.3.3 simulation; 1.75° circular footprint, "
+          "chip gaps ignored)")
     """),
     _c("md", """
-    - In this baseline simulation, about 19,000 deg² get at least 6 visits in every band during
-      Year 1 (from the maps extract; nominal survey, no downtime; our 1.75° circular footprint
-      ignores chip gaps and quality cuts, so this is generous).
-    - Phil Marshall showed on Sep 23 that *updated* simulations of Year 1 (June 2026–June 2027) do
-      not give enough visits (6+ after quality cuts) to coadd much area beyond the deep drilling
-      fields.
+    - In the baseline v5.3.3 simulation, about 19,000 deg² get at least 6 visits in every band
+      during Year 1 (computed above from the maps extract).
+    - Phil Marshall (Sep 23) showed that updated simulations give an "expected number of visits
+      between June '26–'27 not sufficient to coadd area more than DDFs", using 6+ visits as the
+      "minimum raw visits for coaddition after quality cuts".
 
     **Two answers to one question.** Both come from simulations of the same survey. List the
     differences in assumptions that could turn ~19,000 deg² into "mostly just the deep fields".
@@ -653,8 +655,8 @@ PART2_CELLS = [
     plt.show()
     """),
     _c("md", """
-    **Median gap vs. your revisit time.** Across most of the main survey, the median gap is a few
-    nights. How does that compare with the ~3 days from the worksheet rule? Why might a median of a
+    **Median gap vs. your revisit time.** Read the typical value off the map. How does it compare
+    with the ~3 days from the worksheet rule? Why might a median of a
     few nights still leave long gaps that matter for your science?
 
     > **Go deeper.** Use `maps` to compute how much sky reaches a 10-yr r-band coadd depth of at
