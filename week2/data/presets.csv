@@ -1,0 +1,19 @@
+name,ra,dec,blurb
+main-1,150.0,-30.0,Main survey (WFD) field near the equator
+main-2,30.0,-45.0,Main survey (WFD) field in the southern sky
+main-3,330.0,-20.0,Main survey (WFD) field in the southern sky
+COSMOS,150.1,2.18,COSMOS Deep Drilling Field
+ECDFS,53.13,-28.1,Extended Chandra Deep Field South DDF
+EDFS,58.9,-49.32,Euclid Deep Field South DDF
+ELAIS-S1,9.45,-44.0,ELAIS-S1 Deep Drilling Field
+XMM-LSS,35.71,-4.75,XMM-LSS Deep Drilling Field
+Gal-center,266.42,-29.01,Galactic centre
+Gal-plane-l300,187.4,-62.8,Galactic plane at l=300 deg
+LMC,80.89,-69.76,Large Magellanic Cloud
+47-Tuc,6.02,-72.08,47 Tucanae globular cluster
+Fornax-dSph,39.99,-34.45,Fornax dwarf spheroidal
+ecliptic,0.0,0.0,"Point on the ecliptic (RA=0, Dec=0)"
+north-edge,180.0,25.0,Northern edge of the main survey footprint
+south-polar-cap,0.0,-85.0,South polar cap
+RXJ1131-1231,172.96,-12.53,Lensed quasar RXJ1131-1231
+HE0435-1223,69.56,-12.29,Lensed quasar HE0435-1223
