@@ -158,13 +158,16 @@ PART1_CELLS = [
 
     $$N(<i) = 46 \\times 10^{0.31\\,(i-25)}\\ \\text{arcmin}^{-2}$$
 
-    *Source: LSST Science Book, eq. 3.7.* Multiply by the area (1 deg² = 3600 arcmin²).
+    *Source: LSST Science Book (2009), eq. 3.7 — a fit to CFHTLS Deep counts over
+    20.5 < i < 25.5. Deeper than i ≈ 25.5 it is an extrapolation.* Multiply by the area
+    (1 deg² = 3600 arcmin²).
 
-    **Where does this break?** The fit was calibrated for $i \\lesssim 25$–$27$. It also ignores
-    blending: at LSST depth, a large fraction of galaxies overlap a neighbour. Does a deeper survey
-    always give you more *usable* shapes?
+    **Where does this break?** At the LSST defaults your $i_\\text{lim}$ is beyond 25.5, where the
+    fit is an extrapolation. It also ignores blending: at LSST depth, many galaxies overlap a
+    neighbour. How much would you trust the galaxy count, and does a deeper survey always give you
+    more *usable* shapes?
 
-    **Type Ia supernovae.** Peak absolute magnitude $M = -19.3$ with no K-correction. A supernova
+    **Type Ia supernovae.** Peak absolute magnitude $M = -19.3$. A supernova
     counts as "detected near peak" if it is 1 mag brighter than a single i-band visit's limit:
     solve $M + \\mathrm{DM}(z_\\text{max}) = m_5^\\text{single}(i) - 1$ with the Planck 2018
     cosmology. Then
@@ -174,13 +177,19 @@ PART1_CELLS = [
 
     with $R = 2.6\\times10^{-5}\\ \\text{Mpc}^{-3}\\,\\text{yr}^{-1}$ (local SN Ia rate), the
     $(1+z)^{1.5}$ rate evolution, $1/(1+z)$ for time dilation, and 0.5 because a field is only
-    observable about half the year.
+    observable about half the year. The estimate uses the i-band single-visit depth, so it is 0 if
+    you give i no visits.
 
-    **Where does this break?** This is an upper bound: no K-corrections, and no requirement that you
-    actually get a well-sampled light curve. What would you need to add to count supernovae that are
-    useful for cosmology?
+    *Source: volumetric rate $r_V \\propto (1+z)^{1.5}$ from Dilday et al. 2008 (ApJ 682, 262),
+    normalized to ≈2.6×10⁻⁵ Mpc⁻³ yr⁻¹ ($h_{70}^3$) — consistent with their measured 2.9×10⁻⁵ at
+    z ≈ 0.09. Peak M ≈ −19.3 is the standard SN Ia peak absolute magnitude.*
 
-    **Moving objects.** Linking an asteroid orbit needs roughly 3 same-night pairs within ~15 days.
+    **Where does this break?** This is an upper bound. What would you need to add to count
+    supernovae that are useful for cosmology?
+
+    **Moving objects.** Linking an asteroid orbit needs roughly 3 same-night pairs within ~15 days
+    (Ivezić et al. 2019; Jones et al. 2018: detections on ~3 nights within ~15 nights, 2 visits per
+    night).
     Pairs per 15-day window per field:
 
     $$\\frac{N_\\text{visits}/2}{10 \\times 365.25 \\times 0.5 / 15}$$
@@ -192,7 +201,7 @@ PART1_CELLS = [
     clump them. Is the average the right statistic for "did we link this asteroid"?
     """),
     _c("code", """
-    SN_M_PEAK = -19.3        # SN Ia peak absolute mag (no K-correction)
+    SN_M_PEAK = -19.3        # SN Ia peak absolute mag
     SN_RATE = 2.6e-5         # Mpc^-3 yr^-1, local SN Ia rate
     YEARS, SEASON = 10.0, 0.5
 
@@ -216,7 +225,7 @@ PART1_CELLS = [
         return float(np.interp(m_lim, m_app, _Z[1:]))
 
     def n_sn_detected(m_lim, area):
-        \"\"\"Upper bound on SNe Ia seen near peak (no K-corrections, no light-curve cuts).\"\"\"
+        \"\"\"Upper bound on SNe Ia seen near peak.\"\"\"
         zmax = z_max_sn(m_lim)
         if zmax <= 0:
             return 0.0
@@ -287,10 +296,11 @@ PART1_CELLS = [
         print()
         print(f"Revisit time (worksheet rule):        {p['revisit_days']:.1f} days")
         print(f"Weak-lensing galaxies (i < m5 - 1.5): {p['n_gal']:.2e}")
-        print("SNe Ia detected near peak (upper bound; no K-corrections, no light-curve quality "
-              f"cuts): {p['n_sn_detected']:.2e}")
+        print("SNe Ia detected near peak (an upper bound — see the question below): "
+              f"{p['n_sn_detected']:.2e}")
         print(f"Same-night pairs per field per 15 d:  {p['pairs_per_15d']:.1f}  "
-              "(rule of thumb: linking an orbit needs ~3 pairs within ~15 days)")
+              "(rule of thumb: linking an orbit needs ~3 pairs within ~15 days; "
+              "Ivezic et al. 2019, Jones et al. 2018)")
         if p["warnings"]:
             print("\\nWarnings:")
             for w in p["warnings"]:
@@ -322,8 +332,12 @@ PART1_CELLS = [
     """),
     _c("md", """
     **Check your number.** Phil Marshall quoted ~100,000 LSST supernovae. Why is your number bigger?
+    What does this estimate leave out?
 
     **Asteroids.** Does the LSST default meet the ~3 pairs in ~15 days rule? What about your survey?
+
+    **Two cadence numbers.** The revisit time and the pairs-per-15-days number don't quite agree.
+    Why not? Which assumptions differ?
     """),
     _c("md", """
     ### Now it's yours
