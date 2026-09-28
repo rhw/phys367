@@ -381,7 +381,265 @@ PART1_CELLS = [
     """),
 ]
 
-PART2_CELLS = []
+# ---------------------------------------------------------------------------
+# Part 2: the real plan, baseline v5.3.3
+# ---------------------------------------------------------------------------
+PART2_CELLS = [
+    _c("md", """
+    ## Part 2 · The real plan: baseline v5.3.3
+
+    Rubin's scheduler team simulates the full ten-year survey visit by visit. We use their
+    baseline v5.3.3 simulation: 1,852,100 visits starting in mid-2026 (from the simulation). The
+    files in `data/` are small extracts of it:
+
+    - **maps**: for each sky pixel (about 0.84 deg²) and band, the number of visits and the coadded
+      depth after 10 years and after Year 1, plus the median gap between nights with a visit.
+    - **points**: every visit that covers one of a few named sky positions.
+    - **budget**: how the visits and open-shutter hours split among the survey's programs.
+
+    To build these we treated each visit as a circle of radius 1.75° around the pointing centre and
+    ignored the gaps between CCDs. Real coverage is a few percent patchier.
+
+    The coadded depth in each pixel uses the same formula as Part 1, but with each visit's actual
+    $m_5$ instead of a single number:
+    $m_5^\\text{coadd} = 1.25\\log_{10}\\sum_i 10^{0.8\\,m_{5,i}}$.
+    """),
+    _c("code", """
+    maps = load("maps")
+    points = load("points")
+    budget = load("budget")
+    print(f"maps: {len(maps):,} (pixel, band) rows; points: {len(points):,} visits; "
+          f"budget: {budget['total_visits'].sum():,} visits in total")
+    maps.head()
+    """),
+    _c("md", """
+    ### Where did ten years go?
+
+    The simulation labels every visit with the program that asked for it: the **main** wide survey,
+    the five **DDF** deep drilling fields, **templates** (early visits to build reference images),
+    **ToO** (targets of opportunity, such as follow-up of gravitational-wave events), **twilight NEO**
+    (short twilight visits hunting near-Earth objects), and the **Roman bulge** field.
+    """),
+    _c("code", """
+    def budget_table():
+        \"\"\"Share of visits and of open-shutter hours per program, largest first (from the simulation).\"\"\"
+        b = load("budget").set_index("category")
+        t = pd.DataFrame({
+            "visits": b["total_visits"],
+            "% of visits": 100 * b["total_visits"] / b["total_visits"].sum(),
+            "open-shutter hours": b["open_shutter_hours"],
+            "% of hours": 100 * b["open_shutter_hours"] / b["open_shutter_hours"].sum(),
+        })
+        return t.sort_values("% of visits", ascending=False)
+
+    budget_table().round(1)
+    """),
+    _c("md", """
+    **Where did ten years go?** Your worksheet budget spent everything on one survey. What fraction
+    does the real plan spend on the main survey? Twilight NEO visits are a larger share of visits
+    than of hours. Why?
+
+    ### What does a main-survey field get?
+
+    Main-survey fields get roughly 150–170 r-band visits and ~720–750 visits in all bands over
+    10 years in this simulation (Ivezić et al. 2019 quoted ~184 r and ~825 total for an earlier
+    design).
+
+    `compare_to_mine(plan)` puts your plan from Part 1 next to the medians over main-survey pixels.
+    We call a pixel "main survey" if it has at least 500 visits in all bands and lies more than 2°
+    from any deep drilling field. **This is a heuristic**, not the simulation's own label: the
+    500-visit cut and the 2° radius are our choices, and the medians shift a little if you change
+    them (try `main_survey_medians(min_visits=400, ddf_radius=3)`).
+    """),
+    _c("code", """
+    # Deep drilling field centres (RA, Dec in degrees), copied from data/presets.csv.
+    DDF_FIELDS = {"COSMOS": (150.10, 2.18), "ECDFS": (53.13, -28.10), "EDFS": (58.90, -49.32),
+                  "ELAIS-S1": (9.45, -44.00), "XMM-LSS": (35.71, -4.75)}
+
+    def ang_sep_deg(ra1, dec1, ra2, dec2):
+        \"\"\"Angular separation in degrees (haversine; safe at RA = 0/360 and near the poles).\"\"\"
+        ra1, dec1, ra2, dec2 = map(np.radians, (ra1, dec1, ra2, dec2))
+        h = (np.sin((dec2 - dec1) / 2) ** 2
+             + np.cos(dec1) * np.cos(dec2) * np.sin((ra2 - ra1) / 2) ** 2)
+        return np.degrees(2 * np.arcsin(np.sqrt(np.clip(h, 0, 1))))
+
+    def main_survey_pixels(maps=None, min_visits=500, ddf_radius=2.0):
+        \"\"\"Pixel ids we treat as main survey (heuristic: >= min_visits total, > ddf_radius from a DDF).\"\"\"
+        m = load("maps") if maps is None else maps
+        pix = m.groupby("hpix").agg(ra=("ra", "first"), dec=("dec", "first"), total=("nvis", "sum"))
+        keep = pix["total"] >= min_visits
+        for ra0, dec0 in DDF_FIELDS.values():
+            keep &= ang_sep_deg(pix["ra"].values, pix["dec"].values, ra0, dec0) > ddf_radius
+        return pix.index[keep]
+
+    def main_survey_medians(maps=None, **cuts):
+        \"\"\"Median visits and coadd depth per band over main-survey pixels (from the simulation).\"\"\"
+        m = load("maps") if maps is None else maps
+        pix = main_survey_pixels(m, **cuts)
+        sub = m[m["hpix"].isin(pix)]
+        nvis = sub.pivot(index="hpix", columns="band", values="nvis").reindex(
+            index=pix, columns=BANDS).fillna(0)
+        m5c = sub.pivot(index="hpix", columns="band", values="m5_coadd").reindex(
+            index=pix, columns=BANDS)
+        return pd.DataFrame({"nvis": nvis.median(), "m5_coadd": m5c.median().astype(float)})
+
+    def compare_to_mine(plan):
+        \"\"\"Your plan (from plan_survey) next to the real main-survey medians, per band.\"\"\"
+        real = main_survey_medians()
+        t = pd.DataFrame({
+            "yours: visits": [plan["n_by_band"][b] for b in BANDS],
+            "real: visits": real["nvis"].values,
+            "yours: m5 coadd": [plan["m5_coadd"][b] for b in BANDS],
+            "real: m5 coadd": real["m5_coadd"].values,
+        }, index=BANDS)
+        print(f"{len(main_survey_pixels()):,} main-survey pixels (heuristic); "
+              f"real total visits per pixel: {real['nvis'].sum():.0f} (median per band, summed)")
+
+        fig, axes = plt.subplots(1, 2, figsize=(9, 3.5))
+        x = np.arange(len(BANDS))
+        for ax, col, label in [(axes[0], "visits", "visits in 10 yr"),
+                               (axes[1], "m5 coadd", "10-yr coadd $m_5$ (mag)")]:
+            ax.bar(x - 0.2, t[f"yours: {col}"], 0.4, label="your plan (worksheet rules)")
+            ax.bar(x + 0.2, t[f"real: {col}"], 0.4, label="baseline v5.3.3 main survey")
+            ax.set_xticks(x, BANDS)
+            ax.set_ylabel(label)
+        vals = t[["yours: m5 coadd", "real: m5 coadd"]].values
+        vals = vals[np.isfinite(vals)]
+        axes[1].set_ylim(vals.min() - 1, vals.max() + 0.5)
+        axes[0].legend(fontsize=8)
+        fig.tight_layout()
+        plt.show()
+        return t.astype(float).round(2)
+
+    compare_to_mine(lsst)
+    """),
+    _c("md", """
+    Try it with your own plan: `compare_to_mine(plan_survey(area, t_visit, split))`.
+
+    ### Why is the real survey shallower per visit?
+
+    Part 1 assumed every r-band visit reaches 24.7 (Ivezić et al. 2019: dark sky, zenith). Across the
+    full simulation, the median r-band visit reaches 24.06 (from the full simulation). The cell below
+    uses the points file: every r-band main-survey visit that covers one of the named positions.
+    """),
+    _c("code", """
+    def real_vs_worksheet(band="r", category="main"):
+        \"\"\"Median m5, seeing, airmass and sky of real visits vs the worksheet's assumptions.\"\"\"
+        p = load("points")
+        sel = p[(p["band"] == band) & (p["category"] == category)]
+        assumed = {"m5": M5_30S[band], "seeing": 0.7, "airmass": 1.0,
+                   "sky": 21.2 if band == "r" else np.nan}
+        t = pd.DataFrame({
+            "median (simulation)": sel[["m5", "seeing", "airmass", "sky"]].median(),
+            "worksheet assumption": pd.Series(assumed),
+        })
+        t["units"] = ["mag", "arcsec (FWHM)", "", "mag/arcsec²"]
+        print(f"{len(sel):,} {band}-band '{category}' visits in the points file")
+        return t.round(2)
+
+    real_vs_worksheet()
+    """),
+    _c("md", """
+    **Why is the median real visit ~0.6 mag shallower than your 24.7?** Which of the three
+    (seeing, airmass, sky) matters most? Try estimating each effect on its own before you look
+    anything up. Plot `m5` against each column of `points` for r-band visits to check.
+
+    ### Maps
+
+    `sky_map(col, band, which)` draws one column of the maps file on the sky. `col` is `"nvis"`,
+    `"m5_coadd"` or `"median_night_gap"`; `which` is `"10yr"` or `"y1"` (Year 1). East is to the
+    left, as on the sky. Each dot is a pixel centre. Pixels with no visits in that band (and period)
+    are simply absent, so blank sky means "never observed", not zero. The colour scale runs from
+    the 1st to the 99th percentile, so the deep drilling fields saturate; pass `vmin=`, `vmax=` to
+    change it.
+    """),
+    _c("code", """
+    COL_LABELS = {"nvis": "number of visits", "m5_coadd": "coadd 5σ depth (mag)",
+                  "median_night_gap": "median gap between nights with a visit (days)"}
+
+    def sky_map(col="nvis", band="r", which="10yr", ax=None, **scatter_kw):
+        \"\"\"Mollweide map of one maps column for one band. Returns the axes.\"\"\"
+        m = load("maps")
+        m = m[m["band"] == band]
+        if which == "y1":
+            if col not in ("nvis", "m5_coadd"):
+                raise ValueError("Year-1 maps exist only for 'nvis' and 'm5_coadd'")
+            m = m[m["nvis_y1"] > 0]
+            col_used = col + "_y1"
+        elif which == "10yr":
+            col_used = col
+        else:
+            raise ValueError("which must be '10yr' or 'y1'")
+        vals = m[col_used].astype(float)
+        ok = np.isfinite(vals.values)
+        m, vals = m[ok], vals[ok]
+
+        if ax is None:
+            fig = plt.figure(figsize=(8, 4.5))
+            ax = fig.add_subplot(projection="mollweide")
+        # RA in radians in [-pi, pi], flipped so east (increasing RA) is to the left.
+        ra = np.radians(((m["ra"].values + 180.0) % 360.0) - 180.0)
+        dec = np.radians(m["dec"].values)
+        # Colour limits default to the 1st-99th percentiles so a few deep fields don't wash
+        # out the rest of the sky; pass vmin=/vmax= to override.
+        kw = dict(s=2.5, cmap="viridis", linewidths=0,
+                  vmin=np.percentile(vals, 1) if len(vals) else None,
+                  vmax=np.percentile(vals, 99) if len(vals) else None)
+        kw.update(scatter_kw)
+        sc = ax.scatter(-ra, dec, c=vals.values, **kw)
+        ax.set_xticks(np.radians([-150, -120, -90, -60, -30, 0, 30, 60, 90, 120, 150]))
+        ax.set_xticklabels(["150°", "120°", "90°", "60°", "30°", "0°", "330°", "300°",
+                            "270°", "240°", "210°"], fontsize=7)
+        ax.grid(True, alpha=0.3)
+        plt.colorbar(sc, ax=ax, orientation="horizontal", pad=0.06, shrink=0.7, extend="both",
+                     label=f"{band}: {COL_LABELS.get(col, col)}")
+        ax.set_title(f"{band} band, {'10 years' if which == '10yr' else 'Year 1'}: "
+                     f"{COL_LABELS.get(col, col)}", fontsize=10, pad=14)
+        return ax
+
+    sky_map("m5_coadd", "r")
+    plt.show()
+    """),
+    _c("md", """
+    **What do you see?** Find the main survey, the deep drilling fields, and the Galactic plane.
+    Which parts of the sky get more visits than the main survey, and which get fewer? Try `"nvis"`
+    and other bands.
+
+    ### Year 1 vs 10 years
+
+    Phil Marshall (Sep 23) pointed out that Year 1 may not give enough visits to coadd much area
+    outside the deep fields. Compare the r-band visits after Year 1 and after 10 years.
+    (This simulation has no storm downtime, so the real Year 1 could be thinner.)
+    """),
+    _c("code", """
+    fig, axes = plt.subplots(1, 2, figsize=(13, 4), subplot_kw={"projection": "mollweide"})
+    sky_map("nvis", "r", which="y1", ax=axes[0])
+    sky_map("nvis", "r", which="10yr", ax=axes[1])
+    plt.show()
+    """),
+    _c("md", """
+    **Where could you build a Year-1 coadd with ≥6 visits per band?** Count it: how many deg² have
+    `nvis_y1 >= 6` in every band? (Each pixel is about 0.84 deg².) What does that mean for
+    science you'd want to do in Year 1?
+
+    ### How often does the survey come back?
+
+    The worksheet's revisit rule gave one average number. The map below shows, for each pixel, the
+    median gap between nights with a visit in any band, over 10 years (from the simulation).
+    """),
+    _c("code", """
+    sky_map("median_night_gap", "r", vmin=0, vmax=15)
+    plt.show()
+    """),
+    _c("md", """
+    **Median gap vs. your revisit time.** Across most of the main survey, the median gap is a few
+    nights. How does that compare with the ~3 days from the worksheet rule? Why might a median of a
+    few nights still leave long gaps that matter for your science?
+
+    > **Go deeper.** Use `maps` to compute how much sky reaches a 10-yr r-band coadd depth of at
+    > least 27.0, and how that area grows from Year 1 to Year 10.
+    """),
+]
 PART3_CELLS = []
 PART4_CELLS = []
 
