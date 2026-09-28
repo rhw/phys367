@@ -1,7 +1,7 @@
 name,ra,dec,blurb
-main-1,150.0,-30.0,Main survey (WFD) field near the equator
-main-2,30.0,-45.0,Main survey (WFD) field in the southern sky
-main-3,330.0,-20.0,Main survey (WFD) field in the southern sky
+main-1,150.0,-30.0,Main survey (WFD) field
+main-2,30.0,-45.0,Main survey (WFD) field
+main-3,330.0,-20.0,Main survey (WFD) field
 COSMOS,150.1,2.18,COSMOS Deep Drilling Field
 ECDFS,53.13,-28.1,Extended Chandra Deep Field South DDF
 EDFS,58.9,-49.32,Euclid Deep Field South DDF

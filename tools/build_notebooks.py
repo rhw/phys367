@@ -41,6 +41,7 @@ PART1_CELLS = [
     """),
     _c("code", """
     # Setup. Everything here ships with Colab.
+    import os
     from pathlib import Path
     import urllib.request
 
@@ -76,6 +77,18 @@ PART1_CELLS = [
 
     # numpy renamed trapz -> trapezoid in 2.0; use whichever exists.
     _trapz = getattr(np, "trapezoid", None) or np.trapz
+
+    from ipywidgets import interact, interact_manual
+
+    def sliders(func, **controls):
+        \"\"\"Attach sliders and menus to func, like ipywidgets.interact.
+
+        Automated runs with no screen (our tests set PHYS367_HEADLESS=1) build the same widgets
+        but don't run func, because live widget output can stall a headless run.
+        \"\"\"
+        if os.environ.get("PHYS367_HEADLESS") == "1":
+            return interact_manual(func, **controls)
+        return interact(func, **controls)
     """),
     _c("md", """
     ## Part 1 · Your survey, with sliders
@@ -350,11 +363,11 @@ PART1_CELLS = [
     directly; that's also what to use for your hand-in figure.
     """),
     _c("code", """
-    from ipywidgets import interact, FloatSlider, IntSlider
+    from ipywidgets import FloatSlider, IntSlider
 
     _band_sliders = {b: FloatSlider(value=DEFAULT_SPLIT[b], min=0.0, max=0.5, step=0.01,
                                     description=b, continuous_update=False) for b in BANDS}
-    interact(show_survey,
+    sliders(show_survey,
              area=IntSlider(value=18000, min=1000, max=30000, step=500,
                             description="area (deg²)", continuous_update=False),
              t_visit=IntSlider(value=30, min=5, max=120, step=5,
@@ -663,8 +676,535 @@ PART2_CELLS = [
     > least 27.0, and how that area grows from Year 1 to Year 10.
     """),
 ]
-PART3_CELLS = []
-PART4_CELLS = []
+# ---------------------------------------------------------------------------
+# Part 3: one point on the sky, and light curves
+# ---------------------------------------------------------------------------
+PART3_CELLS = [
+    _c("md", """
+    ## Part 3 · One point on the sky
+
+    The maps average over ten years. A transient doesn't: what matters is *when* the survey looks.
+    The points file lists every visit whose 1.75° circle covers one of a few named positions
+    (chip gaps ignored), with that visit's time, band, and depth (from the simulation). Here are
+    the positions.
+    """),
+    _c("code", """
+    presets = load("presets").set_index("name")
+    presets
+    """),
+    _c("code", """
+    FOOTPRINT_RADIUS = 1.75   # deg; each visit is a circle this size around its pointing (chip gaps ignored)
+    SURVEY_START = 61208.0    # MJD of the first night of the simulation (~2026-06-29)
+    BAND_COLORS = {"u": "tab:purple", "g": "tab:blue", "r": "tab:green",
+                   "i": "tab:orange", "z": "tab:red", "y": "tab:brown"}
+
+    def _check_preset(preset):
+        if preset not in presets.index:
+            raise ValueError(f"unknown preset {preset!r}; choose one of: {', '.join(presets.index)}")
+
+    def _no_visits(preset):
+        print(f"No visits within {FOOTPRINT_RADIUS}° of {preset} in this simulation "
+              "— why might that be?")
+
+    def visits_at(preset):
+        \"\"\"All simulated visits covering one preset position, in time order (from the points file).\"\"\"
+        _check_preset(preset)
+        return points[points["preset"] == preset].sort_values("mjd").reset_index(drop=True)
+
+    def seasons(mjd, gap=60.0):
+        \"\"\"(start, end) MJD of each observing season: runs of visits with no gap longer than `gap` days.\"\"\"
+        mjd = np.sort(np.asarray(mjd, float))
+        if mjd.size == 0:
+            return []
+        breaks = np.where(np.diff(mjd) > gap)[0]
+        return list(zip(np.r_[mjd[0], mjd[breaks + 1]], np.r_[mjd[breaks], mjd[-1]]))
+
+    def night_gaps(mjd, gap=60.0):
+        \"\"\"Gaps (days) between successive nights with a visit, leaving out the gaps between seasons.\"\"\"
+        nights = np.unique(np.floor(np.asarray(mjd, float)))
+        d = np.diff(nights)
+        return d[d <= gap]
+
+    def cadence_plot(preset, start=None, stop=None, ax=None):
+        \"\"\"Raster of visits (time x band) at one preset, seasons shaded. Returns the visits.\"\"\"
+        v = visits_at(preset)
+        if len(v) == 0:
+            _no_visits(preset)
+            return v
+        show = ax is None
+        if ax is None:
+            fig, ax = plt.subplots(figsize=(10, 3))
+        for s, e in seasons(v["mjd"]):
+            ax.axvspan(s - 0.5, e + 0.5, color="0.9", zorder=0)
+        for k, b in enumerate(BANDS):
+            vb = v[v["band"] == b]
+            ax.scatter(vb["mjd"], np.full(len(vb), k), marker="|", s=120, linewidths=0.8,
+                       color=BAND_COLORS[b])
+        ax.set_yticks(range(len(BANDS)), BANDS)
+        ax.set_ylim(len(BANDS) - 0.5, -0.5)
+        ax.set_xlim(start if start is not None else v["mjd"].min() - 20,
+                    stop if stop is not None else v["mjd"].max() + 20)
+        ax.set_xlabel("MJD (shaded: observing seasons)")
+        top = ax.secondary_xaxis("top", functions=(lambda m: (m - SURVEY_START) / 365.25,
+                                                  lambda y: y * 365.25 + SURVEY_START))
+        top.set_xlabel("years since the survey starts")
+        n_nights = len(np.unique(np.floor(v["mjd"])))
+        ra, dec = presets.loc[preset, ["ra", "dec"]]
+        ax.set_title(f"{preset} (RA {ra:g}, Dec {dec:g}): {len(v):,} visits on {n_nights:,} nights "
+                     f"in 10 yr; median gap between nights in a season "
+                     f"{np.median(night_gaps(v['mjd'])):.1f} d", fontsize=9)
+        if show:
+            plt.tight_layout()
+            plt.show()
+        return v
+
+    cadence_plot("main-1");
+    """),
+    _c("code", """
+    def cadence_table():
+        \"\"\"One row per preset: visits, nights, seasons, and gaps between nights (from the points file).\"\"\"
+        rows = {}
+        for name in presets.index:
+            v = visits_at(name)
+            g = night_gaps(v["mjd"]) if len(v) else np.array([])
+            rows[name] = {"visits": len(v),
+                          "nights": len(np.unique(np.floor(v["mjd"]))),
+                          "seasons": len(seasons(v["mjd"])),
+                          "median gap (d)": np.median(g) if len(g) else np.nan,
+                          "90th pct gap (d)": np.percentile(g, 90) if len(g) else np.nan}
+        return pd.DataFrame(rows).T.round(1)
+
+    cadence_table()
+    """),
+    _c("md", """
+    Pick a position from the menu. If the menu doesn't appear, call `cadence_plot("COSMOS")`
+    directly; zoom in on one season with `cadence_plot("COSMOS", start=61400, stop=61550)`.
+    """),
+    _c("code", """
+    from ipywidgets import Dropdown
+
+    def _cadence_widget(preset):
+        cadence_plot(preset)
+
+    sliders(_cadence_widget, preset=Dropdown(options=list(presets.index), value="COSMOS",
+                                              description="position"));
+    """),
+    _c("md", """
+    **Read the raster.** Compare a deep drilling field with a main-survey field. How long is a
+    season? How many nights per season get a visit, and in how many bands? What does the
+    `north-edge` position tell you?
+
+    ### Photometric errors
+
+    A visit's $m_5$ is the magnitude at which a point source has S/N = 5. If the noise is dominated
+    by the sky background, S/N scales with the source flux, so
+
+    $$\\mathrm{S/N} = 5\\times10^{-0.4\\,(m - m_5)}, \\qquad
+    \\sigma_m = \\frac{2.5}{\\ln 10}\\,\\frac{1}{\\mathrm{S/N}} = \\frac{1.0857}{5\\times10^{-0.4\\,(m-m_5)}}$$
+
+    *Source: the definition of $m_5$ plus background-limited noise; a simplified form of the
+    error model in Ivezić et al. 2019.* A source at exactly $m_5$ has $\\sigma_m \\approx 0.22$ mag.
+    We call a visit a **detection** if the observed magnitude is brighter than that visit's
+    $m_5$ (S/N > 5). To simulate a measurement we add Gaussian noise to the *flux*, not the
+    magnitude, so that faint sources scatter the right way.
+
+    **Where does this break?** For bright sources the source's own photon noise dominates, and real
+    photometry has a systematic floor of a few millimag. Which of the models below are bright
+    enough for that to matter?
+    """),
+    _c("code", """
+    def mag_err(m, m5):
+        \"\"\"1-sigma magnitude error of a source of magnitude m in a visit of depth m5.\"\"\"
+        return 1.0857 / (5 * 10 ** (-0.4 * (np.asarray(m, float) - np.asarray(m5, float))))
+
+    print(f"mag_err(24.0, 24.0) = {mag_err(24.0, 24.0):.3f} mag;  "
+          f"mag_err(21.5, 24.0) = {mag_err(21.5, 24.0):.3f} mag")
+    """),
+    _c("md", """
+    ### Three toy transients
+
+    Each model is a function `model(t, band)` that returns the true apparent magnitude at time
+    `t` (days after `t0`) in one band, or NaN when the source isn't there.
+
+    **Kilonova** (a neutron-star merger). Peak $M_r \\approx -16$, fading by roughly 0.5–1 mag per
+    day, roughly like AT2017gfo, the GW170817 kilonova. We put it at $d = 200$ Mpc by default
+    (GW170817 was at about 40 Mpc), start it at peak at $t = 0$, and let it fade linearly in
+    magnitude at u 1.2, g 1.0, r 0.7, i 0.5, z 0.4, y 0.35 mag/day. The same peak in every band and
+    these per-band rates are toy values chosen to make it redden as it fades.
+
+    $$m(t) = -16 + 5\\log_{10}\\frac{d}{10\\,\\text{pc}} + \\dot m_\\text{band}\\,t, \\qquad t \\ge 0$$
+
+    **Where does this break?** A real kilonova rises in under a day and is blue early, then red.
+    It also sits in a host galaxy, behind dust. Which of these matters most for *catching* it?
+
+    **Type Ia supernova** at redshift $z$ (default 0.3). A Bazin et al. (2009) shape in flux,
+    $f(t) \\propto e^{-t/\\tau_\\text{fall}} / (1 + e^{-t/\\tau_\\text{rise}})$, with
+    $\\tau_\\text{rise} = 5$ d and $\\tau_\\text{fall} = 20$ d in the rest frame, stretched by
+    $(1+z)$, shifted so $t = 0$ is peak. Peak $M = -19.3$ (the standard SN Ia peak, as in Part 1)
+    plus toy colour offsets u +0.5, g 0, r −0.1, i +0.2, z +0.4, y +0.5, at the Planck 2018
+    distance modulus.
+
+    **Where does this break?** At $z = 0.3$ each LSST band sees a bluer part of the rest-frame
+    spectrum (no K-correction here). Real SNe Ia also differ in stretch and colour. What would
+    you need to measure to use one for cosmology?
+    """),
+    _c("code", """
+    KN_M_PEAK = -16.0                 # peak absolute mag, roughly AT2017gfo (GW170817)
+    KN_FADE = {"u": 1.2, "g": 1.0, "r": 0.7, "i": 0.5, "z": 0.4, "y": 0.35}   # mag/day (toy)
+    SN_TAU_RISE, SN_TAU_FALL = 5.0, 20.0                                        # rest-frame days
+    SN_COLOR = {"u": 0.5, "g": 0.0, "r": -0.1, "i": 0.2, "z": 0.4, "y": 0.5}   # mag (toy)
+
+    def dist_mod_mpc(d_mpc):
+        \"\"\"Distance modulus for a distance in Mpc.\"\"\"
+        return 5 * np.log10(d_mpc * 1e6 / 10.0)
+
+    def kilonova(t, band, d_mpc=200):
+        \"\"\"Toy kilonova: peak M = -16 at t = 0, then a linear fade per band. NaN for t < 0.\"\"\"
+        t = np.asarray(t, float)
+        m = KN_M_PEAK + dist_mod_mpc(d_mpc) + KN_FADE[band] * t
+        return np.where(t >= 0, m, np.nan)
+
+    def sn_ia(t, band, z=0.3):
+        \"\"\"Toy SN Ia: Bazin shape (tau_rise 5 d, tau_fall 20 d, x (1+z)); t = 0 is peak.\"\"\"
+        t = np.asarray(t, float)
+        tr, tf = SN_TAU_RISE * (1 + z), SN_TAU_FALL * (1 + z)
+        t_peak = tr * np.log(tf / tr - 1)          # where the Bazin curve peaks
+        def log_f(x):                              # log flux; logaddexp avoids overflow
+            return -x / tf - np.logaddexp(0.0, -x / tr)
+        m_peak = SN_M_PEAK + SN_COLOR[band] + np.interp(z, _Z, _DM)
+        return m_peak - 2.5 / np.log(10) * (log_f(t + t_peak) - log_f(t_peak))
+    """),
+    _c("code", """
+    LC_COLUMNS = ["mjd", "night", "band", "m5", "t", "m_true", "m_obs", "m_err", "detected"]
+
+    def _measure(m_true, m5, rng):
+        \"\"\"Add flux noise (sigma = flux at m5 / 5). Returns observed mag (NaN if flux <= 0), error.\"\"\"
+        f = 10 ** (-0.4 * (m_true - m5))           # flux in units of the flux at m5
+        f_obs = f + rng.normal(0.0, 0.2, len(f))
+        with np.errstate(divide="ignore", invalid="ignore"):
+            m_obs = np.where(f_obs > 0, m5 - 2.5 * np.log10(f_obs), np.nan)
+        return m_obs, mag_err(m_obs, m5)
+
+    def _observe_visits(v, model, t0, rng, **model_kw):
+        t = v["mjd"].values - t0
+        m_true = np.full(len(v), np.nan)
+        for b in BANDS:
+            sel = v["band"].values == b
+            if sel.any():
+                m_true[sel] = model(t[sel], b, **model_kw)
+        keep = np.isfinite(m_true)
+        lc = v.loc[keep, ["mjd", "night", "band", "m5"]].copy()
+        lc["t"], lc["m_true"] = t[keep], m_true[keep]
+        lc["m_obs"], lc["m_err"] = _measure(lc["m_true"].values, lc["m5"].values, rng)
+        lc["detected"] = lc["m_obs"] < lc["m5"]      # S/N > 5; NaN compares False
+        return lc[LC_COLUMNS].reset_index(drop=True)
+
+    def observe(preset, model, t0, seed=367, **model_kw):
+        \"\"\"Sample model(t, band) at every simulated visit to `preset`, with noise.
+
+        t0 is the MJD of the event (t = mjd - t0). Returns one row per visit where the model is
+        defined: true and observed magnitude, error, and whether it was detected (S/N > 5).
+        \"\"\"
+        v = visits_at(preset)
+        if len(v) == 0:
+            _no_visits(preset)
+            return pd.DataFrame(columns=LC_COLUMNS)
+        return _observe_visits(v, model, t0, np.random.default_rng(seed), **model_kw)
+
+    def show_lightcurve(preset="COSMOS", model=kilonova, t0=61500.0, window=(-5, 20), ax=None,
+                        seed=367, **model_kw):
+        \"\"\"Plot observe(...) : detections with error bars, non-detections as m5 upper limits.\"\"\"
+        lc = observe(preset, model, t0, seed=seed, **model_kw)
+        if len(lc) == 0:
+            return lc
+        show = ax is None
+        if ax is None:
+            fig, ax = plt.subplots(figsize=(8, 4))
+        tt = np.linspace(window[0], window[1], 400)
+        for b in BANDS:
+            ax.plot(tt, model(tt, b, **model_kw), color=BAND_COLORS[b], lw=0.8, alpha=0.5)
+            s = lc[(lc["band"] == b) & lc["t"].between(*window)]
+            det, lim = s[s["detected"]], s[~s["detected"]]
+            ax.errorbar(det["t"], det["m_obs"], det["m_err"], fmt="o", ms=4,
+                        color=BAND_COLORS[b], label=b)
+            ax.scatter(lim["t"], lim["m5"], marker="v", s=18, color=BAND_COLORS[b], alpha=0.4)
+        win = lc[lc["t"].between(*window)]
+        faint = np.nanmax(np.r_[win["m5"].values, win["m_obs"].values, 24.0])
+        bright = np.nanmin(np.r_[win["m_true"].values, faint - 3])
+        ax.set_ylim(faint + 0.5, bright - 0.5)       # faint at the bottom
+        ax.set_xlim(*window)
+        ax.set_xlabel(f"days since t0 = MJD {t0:.1f}")
+        ax.set_ylabel("magnitude")
+        ax.set_title(f"{getattr(model, '__name__', 'model')} at {preset}: {int(win['detected'].sum())} "
+                     f"detections in {len(win)} visits (lines: model; triangles: m5 of non-detections)",
+                     fontsize=9)
+        ax.legend(fontsize=7, ncol=6, loc="lower left")
+        if show:
+            plt.tight_layout()
+            plt.show()
+        return lc
+
+    show_lightcurve("COSMOS", kilonova, t0=61500.0);
+    """),
+    _c("md", """
+    Pick a position, a model and a start time. The direct call is
+    `show_lightcurve("main-1", sn_ia, t0=61500, window=(-30, 80))`; that's the one to use for a
+    hand-in figure.
+    """),
+    _c("code", """
+    from ipywidgets import FloatSlider
+
+    def _lightcurve_widget(preset, model, t0):
+        show_lightcurve(preset, model, t0, window=(-5, 20) if model is kilonova else (-30, 80))
+
+    sliders(_lightcurve_widget,
+             preset=Dropdown(options=list(presets.index), value="COSMOS", description="position"),
+             model=Dropdown(options={"kilonova": kilonova, "SN Ia": sn_ia}, description="model"),
+             t0=FloatSlider(value=61500, min=SURVEY_START, max=SURVEY_START + 3652, step=1,
+                            description="t0 (MJD)", continuous_update=False,
+                            layout={"width": "600px"}));
+    """),
+    _c("md", """
+    ### How often do you catch it?
+
+    One `t0` is one lucky or unlucky draw. `fraction_caught` drops the event at many random times
+    across the ten years (so events during the off-season count as misses) and returns the
+    fraction with at least one detection within `within_days` of `t0`.
+    """),
+    _c("code", """
+    def fraction_caught(preset, model=kilonova, within_days=2.0, n_trials=1000, seed=367,
+                        **model_kw):
+        \"\"\"Fraction of random event times (uniform over 10 yr) detected within `within_days`.\"\"\"
+        v = visits_at(preset)
+        if len(v) == 0:
+            _no_visits(preset)
+            return 0.0
+        rng = np.random.default_rng(seed)
+        mjd = v["mjd"].values
+        t0s = rng.uniform(SURVEY_START, SURVEY_START + 3652.5, n_trials)
+        lo = np.searchsorted(mjd, t0s, side="left")
+        hi = np.searchsorted(mjd, t0s + within_days, side="right")
+        caught = 0
+        for t0, a, b in zip(t0s, lo, hi):
+            if b > a:
+                lc = _observe_visits(v.iloc[a:b], model, t0, rng, **model_kw)
+                caught += bool(lc["detected"].any())
+        return caught / n_trials
+
+    def catch_table(model=kilonova, within_days=2.0, **kw):
+        \"\"\"fraction_caught for every preset that has visits.\"\"\"
+        names = [n for n in presets.index if (points["preset"] == n).any()]
+        return pd.Series({n: fraction_caught(n, model, within_days, **kw) for n in names},
+                         name=f"fraction caught within {within_days:g} d").sort_values(ascending=False)
+
+    catch_table(kilonova, within_days=2)
+    """),
+    _c("md", """
+    **Catching a kilonova.** Which preset catches the kilonova within 2 days? Do the deep drilling
+    fields win? Why or why not? What changes at `d_mpc=400` (try
+    `catch_table(kilonova, 2, d_mpc=400)`) or with a longer window?
+
+    ### A lensed quasar: measuring a time delay
+
+    A strongly lensed quasar shows two (or more) images of the same quasar. The light paths differ
+    in length, so image B repeats image A's flickering after a delay $\\Delta t$ (and is fainter by
+    $\\Delta m$). Measure $\\Delta t$ and, with a lens model, you measure $H_0$.
+
+    **Quasar variability** as a damped random walk: on a 1-day grid,
+
+    $$x_{i+1} = x_i\\,e^{-\\Delta/\\tau} + \\sigma\\sqrt{1-e^{-2\\Delta/\\tau}}\\;\\mathcal{N}(0,1),
+    \\qquad \\sigma = \\mathrm{SF}_\\infty/\\sqrt{2}$$
+
+    with $\\tau = 200$ d and $\\mathrm{SF}_\\infty = 0.2$ mag, typical quasar values (e.g. MacLeod et
+    al. 2010), around a mean of 21 mag. Image A is $21 + x(t)$; image B is
+    $21 + x(t - \\Delta t) + \\Delta m$, with $\\Delta t = 30$ d and $\\Delta m = 0.5$ mag (toy
+    values). Both images are sampled at the same visits; the variability is the same in every band
+    (also a toy).
+
+    **Where does this break?** Real lensed-quasar images are also microlensed by stars in the lens
+    galaxy, which adds variability to one image but not the other. And the images are
+    arcseconds apart, so they must be deblended. How would each of these fool the estimator below?
+
+    **The estimator** (a toy). For each trial shift $s$ from −100 to +100 days, shift A by $s$,
+    interpolate it at B's times (only *within* a season, never across a gap), fit a constant
+    offset, and compute the mean squared difference. The best $s$ is the estimate. The real problem,
+    with microlensing and honest error bars, is the subject of Phil Marshall's Oct 26 session.
+    """),
+    _c("code", """
+    QSO_COLUMNS = ["mjd", "night", "band", "m5", "mA_true", "mB_true", "mA", "mB", "errA", "errB"]
+
+    def drw(t_grid, tau=200.0, sf=0.2, rng=None):
+        \"\"\"Damped random walk (zero mean) on an evenly spaced grid; SF_inf = sqrt(2) * sigma.\"\"\"
+        rng = np.random.default_rng(rng)
+        sigma = sf / np.sqrt(2)
+        a = np.exp(-np.diff(t_grid) / tau)
+        kicks = rng.normal(0.0, 1.0, len(t_grid))
+        x = np.empty(len(t_grid))
+        x[0] = sigma * kicks[0]                   # start in the stationary distribution
+        for i in range(1, len(t_grid)):
+            x[i] = a[i - 1] * x[i - 1] + sigma * np.sqrt(1 - a[i - 1] ** 2) * kicks[i]
+        return x
+
+    def lensed_quasar(preset=None, dt=30.0, dmag=0.5, tau=200.0, sf=0.2, mean=21.0,
+                      noise=True, mjd=None, seed=367):
+        \"\"\"Two images of a DRW quasar, B = A delayed by dt and fainter by dmag, at the same visits.
+
+        Give a preset name to use that position's simulated visits, or mjd=array for a cadence
+        of your own (then every visit is r band with m5 = 24.0). noise=False gives exact magnitudes.
+        \"\"\"
+        if mjd is None:
+            v = visits_at(preset)
+            if len(v) == 0:
+                _no_visits(preset)
+                return pd.DataFrame(columns=QSO_COLUMNS)
+        else:
+            mjd = np.sort(np.asarray(mjd, float))
+            v = pd.DataFrame({"mjd": mjd, "night": np.floor(mjd - SURVEY_START).astype(int),
+                              "band": "r", "m5": 24.0})
+        rng = np.random.default_rng(seed)
+        t = v["mjd"].values
+        grid = np.arange(np.floor(t.min()) - abs(dt) - 2, np.ceil(t.max()) + 2, 1.0)
+        x = drw(grid, tau, sf, rng)
+        lc = v[["mjd", "night", "band", "m5"]].copy().reset_index(drop=True)
+        lc["mA_true"] = mean + np.interp(t, grid, x)
+        lc["mB_true"] = mean + np.interp(t - dt, grid, x) + dmag
+        for img in "AB":
+            if noise:
+                m_obs, err = _measure(lc[f"m{img}_true"].values, lc["m5"].values, rng)
+                m_obs[~(m_obs < lc["m5"].values)] = np.nan   # keep detections only
+                lc[f"m{img}"], lc[f"err{img}"] = m_obs, err
+            else:
+                lc[f"m{img}"], lc[f"err{img}"] = lc[f"m{img}_true"], 0.0
+        return lc[QSO_COLUMNS]
+
+    def estimate_delay(lc, shifts=np.arange(-100, 101), min_overlap=10, return_curve=False):
+        \"\"\"Toy delay estimator: the shift s minimizing the mean squared B - (A(t - s) + offset).
+
+        Nights are averaged over bands; A is interpolated only within a season. Returns the best
+        shift in days (NaN if no shift has min_overlap overlapping nights), or
+        (best, shifts, mse) if return_curve=True.
+        \"\"\"
+        shifts = np.asarray(shifts, float)
+        mse = np.full(len(shifts), np.nan)
+        d = lc.dropna(subset=["mA", "mB"]) if len(lc) else lc
+        if len(d) >= min_overlap:
+            g = d.groupby("night").agg(mjd=("mjd", "mean"), A=("mA", "mean"), B=("mB", "mean"))
+            tn, A, B = g["mjd"].values, g["A"].values, g["B"].values
+            seas = seasons(tn)
+            for k, s in enumerate(shifts):
+                q = tn - s                          # B at time t looks like A at t - s
+                ok = np.zeros(len(q), bool)
+                for a, b in seas:
+                    ok |= (q >= a) & (q <= b)
+                if ok.sum() >= min_overlap:
+                    r = B[ok] - np.interp(q[ok], tn, A)
+                    mse[k] = np.mean((r - r.mean()) ** 2)
+        best = float(shifts[np.nanargmin(mse)]) if np.isfinite(mse).any() else np.nan
+        return (best, shifts, mse) if return_curve else best
+
+    def show_delay(preset="RXJ1131-1231", dt=30.0, noise=True, seed=367, **qso_kw):
+        \"\"\"Light curves of both images at a preset, and the estimator's curve. Returns the estimate.\"\"\"
+        lc = lensed_quasar(preset, dt=dt, noise=noise, seed=seed, **qso_kw)
+        if len(lc) == 0:
+            return np.nan
+        best, shifts, mse = estimate_delay(lc, return_curve=True)
+        fig, (a1, a2) = plt.subplots(1, 2, figsize=(12, 3.8), gridspec_kw={"width_ratios": [2, 1]})
+        for img, c in [("A", "tab:blue"), ("B", "tab:red")]:
+            a1.errorbar(lc["mjd"], lc[f"m{img}"], lc[f"err{img}"], fmt=".", ms=3, color=c,
+                        label=f"image {img}")
+        a1.invert_yaxis()
+        a1.set_xlabel("MJD")
+        a1.set_ylabel("magnitude (all bands)")
+        a1.legend(fontsize=8)
+        a1.set_title(f"{preset}: {lc['mA'].notna().sum()} visits with image A detected", fontsize=9)
+        a2.plot(shifts, mse, color="k")
+        a2.axvline(dt, color="tab:green", ls="--", label=f"true delay {dt:g} d")
+        a2.axvline(best, color="tab:orange", label=f"estimate {best:g} d")
+        a2.set_xlabel("trial shift s (days)")
+        a2.set_ylabel("mean squared difference (mag²)")
+        a2.legend(fontsize=8)
+        plt.tight_layout()
+        plt.show()
+        print(f"True delay {dt:g} d; estimated {best:g} d ({'with' if noise else 'without'} noise)")
+        return best
+
+    show_delay("RXJ1131-1231");
+    """),
+    _c("code", """
+    from ipywidgets import Checkbox, fixed
+
+    _lens_names = [n for n in presets.index if n.startswith(("RXJ", "HE"))] + \\
+                  [n for n in presets.index if not n.startswith(("RXJ", "HE"))]
+    sliders(show_delay,
+             preset=Dropdown(options=_lens_names, value="RXJ1131-1231", description="position"),
+             dt=FloatSlider(value=30, min=-90, max=90, step=5, description="true Δt (d)",
+                            continuous_update=False),
+             noise=Checkbox(value=True, description="noise"),
+             seed=fixed(367));
+    """),
+    _c("md", """
+    **Is the delay recovered at RXJ1131?** What limits it: season gaps or noise? Try
+    `show_delay("RXJ1131-1231", noise=False)`, other seeds (`seed=1`, `seed=2`, ...), and a
+    cadence of your own, e.g.
+    `estimate_delay(lensed_quasar(mjd=SURVEY_START + np.arange(0, 3650, 3)))`.
+    """),
+]
+
+# ---------------------------------------------------------------------------
+# Part 4: go deeper, and the hand-in
+# ---------------------------------------------------------------------------
+PART4_CELLS = [
+    _c("md", """
+    ## Part 4 · Go deeper (optional)
+
+    Everything in this notebook came from small extracts of one simulation. Here is where the real
+    tools and data live.
+
+    - **rubin_sim**, the survey-simulation and metrics package: docs at
+      <https://rubin-sim.lsst.io>, with its data download at
+      <https://rubin-sim.lsst.io/data-download.html>.
+    - **The full simulation used here** (baseline v5.3.3, 10 years, an SQLite database of about
+      750 MB):
+      <https://s3df.slac.stanford.edu/data/rubin/sim-data/sims_featureScheduler_runs5.3/baseline/baseline_v5.3.3_10yrs.db>.
+      Alternative v5.3 survey strategies are in the same directory tree:
+      <https://s3df.slac.stanford.edu/data/rubin/sim-data/sims_featureScheduler_runs5.3/>.
+    - **MAF tutorials** (the Metrics Analysis Framework; start with 01–03):
+      <https://github.com/lsst/rubin_sim_notebooks/tree/main/maf/tutorial>.
+      **Writing your own metric** is tutorial `02_Writing_Metrics`. Scheduler tutorials:
+      <https://github.com/lsst/rubin_sim_notebooks/tree/main/scheduler>. Science-metric notebooks
+      (e.g. KNeMetric for kilonovae, TDC_TimeDelayAccuracy for lensed quasars, SNIa):
+      <https://github.com/lsst/rubin_sim_notebooks/tree/main/maf/science>.
+    - **Be the SCOC.** The Survey Cadence Optimization Committee chooses among strategies by
+      comparing metrics like these across many simulations. Precomputed metric results for the
+      simulations: <https://usdf-maf.slac.stanford.edu/>. The survey-strategy hub:
+      <https://survey-strategy.lsst.io>. Pick your science case's metric and find the strategy
+      that does best for it. What does that strategy cost someone else?
+    - **Plan vs. reality.** Phil Marshall (Sep 23): in the first ~15 days of the LSST, the survey
+      took 7,267 science visits out of 17,273 possible (bad weather on 5 nights). On July 14 the
+      summit was evacuated for the worst storm in 50+ years; the target is to be back on sky in
+      mid-October. **What does your science lose?** Rerun your plan with fewer visits, e.g.
+      `plan_survey(area, t_visit, split, budget=0.6 * BUDGET)`, and compare it with your
+      full-budget plan.
+    - **What was actually observed.** Nightly scheduler reports compare each night's plan with what
+      happened: <https://s3df.slac.stanford.edu/data/rubin/sim-data/schedview/reports/>.
+    - **On the Rubin Science Platform** (once your accounts are live): the DP1 Visit table
+      tutorial, 201_10, gives the measured seeing and depth of every real visit. Compare them with
+      the simulated `points` file.
+    """),
+    _c("md", """
+    ## Hand-in
+
+    Due Monday Oct 5 on Canvas. Turn in: (1) one figure you made (use a direct function call, not
+    a slider); (2) one paragraph: what did your team's science case need, and does the baseline
+    survey give it?; (3) a sentence on any AI tools you used. Upload the .ipynb or a PDF. Graded
+    complete/incomplete.
+
+    Write your paragraph and the AI-tools sentence in the cell below.
+    """),
+    _c("md", """
+    *Your paragraph here.*
+    """),
+]
 
 
 def build_notebook_a():

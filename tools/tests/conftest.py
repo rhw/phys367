@@ -4,8 +4,11 @@
 tools/build_notebooks.py, appends ``check_code`` as a final cell, executes the
 notebook headless with nbclient (cwd week2/, kernel "phys367", 600 s per cell),
 and returns the JSON dict printed on the line that starts with ``CHECKS``.
+The kernel runs with PHYS367_HEADLESS=1, so the notebook's ``sliders()`` helper builds
+widgets without auto-running them (see the setup cell).
 """
 import json
+import os
 from pathlib import Path
 
 import nbformat
@@ -25,7 +28,9 @@ def _execute_with_check(check_code: str) -> dict:
     nb.cells.append(nbformat.v4.new_code_cell(check_code))
     client = NotebookClient(nb, timeout=600, kernel_name=KERNEL,
                             resources={"metadata": {"path": str(WEEK2)}})
-    client.execute()
+    # PHYS367_HEADLESS=1: the notebook builds its widgets without auto-running them.
+    # Live output inside an ipywidgets Output widget intermittently stalls nbclient.
+    client.execute(env={**os.environ, "PHYS367_HEADLESS": "1"})
     for out in nb.cells[-1].get("outputs", []):
         if out.get("output_type") == "stream":
             for line in out.get("text", "").splitlines():

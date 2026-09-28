@@ -51,9 +51,9 @@ import pandas as pd
 # ---------------------------------------------------------------------------
 PRESETS = [
     # main survey (WFD) representative pointings
-    ("main-1", 150.0, -30.0, "Main survey (WFD) field near the equator"),
-    ("main-2", 30.0, -45.0, "Main survey (WFD) field in the southern sky"),
-    ("main-3", 330.0, -20.0, "Main survey (WFD) field in the southern sky"),
+    ("main-1", 150.0, -30.0, "Main survey (WFD) field"),
+    ("main-2", 30.0, -45.0, "Main survey (WFD) field"),
+    ("main-3", 330.0, -20.0, "Main survey (WFD) field"),
     # Deep Drilling Fields
     ("COSMOS", 150.10, 2.18, "COSMOS Deep Drilling Field"),
     ("ECDFS", 53.13, -28.10, "Extended Chandra Deep Field South DDF"),
