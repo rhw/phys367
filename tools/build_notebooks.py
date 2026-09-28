@@ -180,7 +180,7 @@ PART1_CELLS = [
     **Where does this break?** At the LSST defaults $i_\\text{lim} \\approx 25.3$, just inside the
     fit's range (20.5 < i < 25.5); a deeper survey pushes it into extrapolation. It also ignores
     blending: at LSST depth, many galaxies overlap a
-    neighbour. How much would you trust the galaxy count, and does a deeper survey always give you
+    neighbor. How much would you trust the galaxy count, and does a deeper survey always give you
     more *usable* shapes?
 
     **Type Ia supernovae.** Peak absolute magnitude $M = -19.3$. A supernova
@@ -286,7 +286,7 @@ PART1_CELLS = [
                             "fast-moving objects.")
         for b in BANDS:
             if total > 0 and n_by_band[b] == 0:
-                warnings.append(f"No {b}-band visits: no {b} coadd depth, and no {b} colours "
+                warnings.append(f"No {b}-band visits: no {b} coadd depth, and no {b} colors "
                                 "for photometric redshifts.")
         if area > SKY_FROM_CHILE:
             warnings.append(f"Area = {area:,.0f} deg^2 is more than the ~30,000 deg^2 "
@@ -416,7 +416,7 @@ PART2_CELLS = [
     - **points**: every visit that covers one of a few named sky positions.
     - **budget**: how the visits and open-shutter hours split among the survey's programs.
 
-    To build these we treated each visit as a circle of radius 1.75° around the pointing centre;
+    To build these we treated each visit as a circle of radius 1.75° around the pointing center;
     chip gaps are ignored.
 
     The coadded depth in each pixel uses the same formula as Part 1, but with each visit's actual
@@ -471,7 +471,7 @@ PART2_CELLS = [
     them (try `main_survey_medians(min_visits=400, ddf_radius=3)`).
     """),
     _c("code", """
-    # Deep drilling field centres (RA, Dec in degrees), copied from data/presets.csv.
+    # Deep drilling field centers (RA, Dec in degrees), copied from data/presets.csv.
     DDF_FIELDS = {"COSMOS": (150.10, 2.18), "ECDFS": (53.13, -28.10), "EDFS": (58.90, -49.32),
                   "ELAIS-S1": (9.45, -44.00), "XMM-LSS": (35.71, -4.75)}
 
@@ -569,8 +569,8 @@ PART2_CELLS = [
 
     `sky_map(col, band, which)` draws one column of the maps file on the sky. `col` is `"nvis"`,
     `"m5_coadd"` or `"median_night_gap"`; `which` is `"10yr"` or `"y1"` (Year 1). East is to the
-    left, as on the sky. Each dot is a pixel centre. Pixels with no visits in that band (and period)
-    are simply absent, so blank sky means "never observed", not zero. The colour scale runs from
+    left, as on the sky. Each dot is a pixel center. Pixels with no visits in that band (and period)
+    are simply absent, so blank sky means "never observed", not zero. The color scale runs from
     the 1st to the 99th percentile, so the deep drilling fields saturate; pass `vmin=`, `vmax=` to
     change it.
     """),
@@ -601,7 +601,7 @@ PART2_CELLS = [
         # RA in radians in [-pi, pi], flipped so east (increasing RA) is to the left.
         ra = np.radians(((m["ra"].values + 180.0) % 360.0) - 180.0)
         dec = np.radians(m["dec"].values)
-        # Colour limits default to the 1st-99th percentiles so a few deep fields don't wash
+        # Color limits default to the 1st-99th percentiles so a few deep fields don't wash
         # out the rest of the sky; pass vmin=/vmax= to override.
         # median_night_gap counts nights with a visit in any band, so it has no band.
         band_txt = "all bands" if col == "median_night_gap" else f"{band} band"
@@ -630,7 +630,7 @@ PART2_CELLS = [
 
     ### Year 1 vs 10 years
 
-    Compare the r-band visits after Year 1 and after 10 years. Note that the two colour scales are
+    Compare the r-band visits after Year 1 and after 10 years. Note that the two color scales are
     different.
     """),
     _c("code", """
@@ -850,11 +850,11 @@ PART3_CELLS = [
     $f(t) \\propto e^{-t/\\tau_\\text{fall}} / (1 + e^{-t/\\tau_\\text{rise}})$, with
     $\\tau_\\text{rise} = 5$ d and $\\tau_\\text{fall} = 20$ d in the rest frame, stretched by
     $(1+z)$, shifted so $t = 0$ is peak. Peak $M = -19.3$ (the standard SN Ia peak, as in Part 1)
-    plus toy colour offsets u +0.5, g 0, r −0.1, i +0.2, z +0.4, y +0.5, at the Planck 2018
+    plus toy color offsets u +0.5, g 0, r −0.1, i +0.2, z +0.4, y +0.5, at the Planck 2018
     distance modulus.
 
     **Where does this break?** At $z = 0.3$ each LSST band sees a bluer part of the rest-frame
-    spectrum (no K-correction here). Real SNe Ia also differ in stretch and colour. What would
+    spectrum (no K-correction here). Real SNe Ia also differ in stretch and color. What would
     you need to measure to use one for cosmology?
     """),
     _c("code", """
