@@ -70,7 +70,9 @@ PART1_CELLS = [
         if not path.exists():
             DATA_DIR.mkdir(exist_ok=True)
             print(f"downloading {fname} ...")
-            urllib.request.urlretrieve(DATA_URL + fname, path)
+            part = path.with_suffix(path.suffix + ".part")   # don't trust a half-finished download
+            urllib.request.urlretrieve(DATA_URL + fname, part)
+            part.rename(path)
         if fname.endswith(".parquet"):
             return pd.read_parquet(path)
         return pd.read_csv(path)
@@ -175,8 +177,9 @@ PART1_CELLS = [
     20.5 < i < 25.5. Deeper than i ≈ 25.5 it is an extrapolation.* Multiply by the area
     (1 deg² = 3600 arcmin²).
 
-    **Where does this break?** At the LSST defaults your $i_\\text{lim}$ is beyond 25.5, where the
-    fit is an extrapolation. It also ignores blending: at LSST depth, many galaxies overlap a
+    **Where does this break?** At the LSST defaults $i_\\text{lim} \\approx 25.3$, just inside the
+    fit's range (20.5 < i < 25.5); a deeper survey pushes it into extrapolation. It also ignores
+    blending: at LSST depth, many galaxies overlap a
     neighbour. How much would you trust the galaxy count, and does a deeper survey always give you
     more *usable* shapes?
 
@@ -367,7 +370,10 @@ PART1_CELLS = [
 
     _band_sliders = {b: FloatSlider(value=DEFAULT_SPLIT[b], min=0.0, max=0.5, step=0.01,
                                     description=b, continuous_update=False) for b in BANDS}
-    sliders(show_survey,
+    def _survey_widget(area, t_visit, u, g, r, i, z, y):
+        show_survey(area, t_visit, u, g, r, i, z, y)     # don't echo the returned plan dict
+
+    sliders(_survey_widget,
              area=IntSlider(value=18000, min=1000, max=30000, step=500,
                             description="area (deg²)", continuous_update=False),
              t_visit=IntSlider(value=30, min=5, max=120, step=5,
@@ -777,6 +783,9 @@ PART3_CELLS = [
     cadence_table()
     """),
     _c("md", """
+    In rolling-cadence years a field can go more than 60 days between visits in the middle of its
+    season, so the "seasons" column counts gaps longer than 60 days, not calendar seasons.
+
     Pick a position from the menu. If the menu doesn't appear, call `cadence_plot("COSMOS")`
     directly; zoom in on one season with `cadence_plot("COSMOS", start=61400, stop=61550)`.
     """),
@@ -1004,7 +1013,9 @@ PART3_CELLS = [
     fields win? Why or why not? What changes at `d_mpc=400` (try
     `catch_table(kilonova, 2, d_mpc=400)`) or with a longer window?
 
-    ### A lensed quasar: measuring a time delay
+    ### Optional · A lensed quasar: measuring a time delay
+
+    Skip this if you're short on time; it previews Phil Marshall's Oct 26 session.
 
     A strongly lensed quasar shows two (or more) images of the same quasar. The light paths differ
     in length, so image B repeats image A's flickering after a delay $\\Delta t$ (and is fainter by
@@ -1063,7 +1074,7 @@ PART3_CELLS = [
                               "band": "r", "m5": 24.0})
         rng = np.random.default_rng(seed)
         t = v["mjd"].values
-        grid = np.arange(np.floor(t.min()) - abs(dt) - 2, np.ceil(t.max()) + 2, 1.0)
+        grid = np.arange(np.floor(t.min()) - abs(dt) - 2, np.ceil(t.max()) + abs(dt) + 2, 1.0)
         x = drw(grid, tau, sf, rng)
         lc = v[["mjd", "night", "band", "m5"]].copy().reset_index(drop=True)
         lc["mA_true"] = mean + np.interp(t, grid, x)
@@ -1135,7 +1146,10 @@ PART3_CELLS = [
 
     _lens_names = [n for n in presets.index if n.startswith(("RXJ", "HE"))] + \\
                   [n for n in presets.index if not n.startswith(("RXJ", "HE"))]
-    sliders(show_delay,
+    def _delay_widget(preset, dt, noise, seed):
+        show_delay(preset, dt=dt, noise=noise, seed=seed)   # don't echo the returned estimate
+
+    sliders(_delay_widget,
              preset=Dropdown(options=_lens_names, value="RXJ1131-1231", description="position"),
              dt=FloatSlider(value=30, min=-90, max=90, step=5, description="true Δt (d)",
                             continuous_update=False),
@@ -1188,8 +1202,8 @@ PART4_CELLS = [
     - **What was actually observed.** Nightly scheduler reports compare each night's plan with what
       happened: <https://s3df.slac.stanford.edu/data/rubin/sim-data/schedview/reports/>.
     - **On the Rubin Science Platform** (once your accounts are live): the DP1 Visit table
-      tutorial, 201_10, gives the measured seeing and depth of every real visit. Compare them with
-      the simulated `points` file.
+      tutorial, 201_10, gives the measured seeing and depth of the LSSTComCam commissioning visits
+      in DP1. Compare them with the simulated `points` file (different camera, and pre-survey).
     """),
     _c("md", """
     ## Hand-in
@@ -1199,7 +1213,12 @@ PART4_CELLS = [
     survey give it?; (3) a sentence on any AI tools you used. Upload the .ipynb or a PDF. Graded
     complete/incomplete.
 
-    Write your paragraph and the AI-tools sentence in the cell below.
+    Make your figure in the code cell below. Write your paragraph and the AI-tools sentence in the
+    last cell.
+    """),
+    _c("code", """
+    # Your hand-in figure (use a direct function call, not a slider), e.g.
+    # show_lightcurve("main-1", sn_ia, t0=61500, window=(-30, 80))
     """),
     _c("md", """
     *Your paragraph here.*
@@ -1209,11 +1228,13 @@ PART4_CELLS = [
 
 def build_notebook_a():
     cells = []
-    for kind, text in PART1_CELLS + PART2_CELLS + PART3_CELLS + PART4_CELLS:
+    for index, (kind, text) in enumerate(PART1_CELLS + PART2_CELLS + PART3_CELLS + PART4_CELLS):
         if kind == "md":
-            cells.append(nbformat.v4.new_markdown_cell(text))
+            cell = nbformat.v4.new_markdown_cell(text)
         else:
-            cells.append(nbformat.v4.new_code_cell(text))
+            cell = nbformat.v4.new_code_cell(text)
+        cell.id = f"cell-{index:03d}"            # deterministic ids: rebuilds don't churn
+        cells.append(cell)
     nb = nbformat.v4.new_notebook(cells=cells)
     nb.metadata["kernelspec"] = {"name": "python3", "display_name": "Python 3",
                                  "language": "python"}

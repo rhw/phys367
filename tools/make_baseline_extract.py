@@ -69,7 +69,7 @@ PRESETS = [
     ("Fornax-dSph", 39.99, -34.45, "Fornax dwarf spheroidal"),
     # survey edges
     ("ecliptic", 0.0, 0.0, "Point on the ecliptic (RA=0, Dec=0)"),
-    ("north-edge", 180.0, 25.0, "Northern edge of the main survey footprint"),
+    ("north-edge", 180.0, 25.0, "Test position at Dec +25"),
     ("south-polar-cap", 0.0, -85.0, "South polar cap"),
     # lensed quasars
     ("RXJ1131-1231", 172.96, -12.53, "Lensed quasar RXJ1131-1231"),

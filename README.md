@@ -30,7 +30,7 @@ To run the notebooks on your own computer:
 
 3. **Open a notebook:**
    ```bash
-   jupyter notebook week2/notebook-A.ipynb
+   jupyter notebook week2/A_survey_strategy.ipynb
    ```
 
 ---
@@ -47,7 +47,7 @@ Each notebook assignment is graded **complete/incomplete** based on the hand-in 
   - **One paragraph** (your interpretation or summary)
   - **An AI-use note** (if you used any generative AI tools, list them; if not, you can write "none")
 
-Upload your hand-in cell output (figure + text) as a PDF or image file to Canvas.
+Upload the .ipynb or a PDF to Canvas.
 
 ---
 

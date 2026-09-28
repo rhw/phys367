@@ -19,6 +19,14 @@ _rx = lensed_quasar('RXJ1131-1231')
 _d_rx = estimate_delay(_rx)
 _rx_clean = lensed_quasar('RXJ1131-1231', noise=False)
 _d_rx_clean = estimate_delay(_rx_clean)
+# negative delay: B leads A, so its DRW must extend past the last visit
+_neg = lensed_quasar(mjd=61208.0 + np.arange(365), dt=-60.0, noise=False)
+_neg_tail = _neg[_neg['mjd'] > _neg['mjd'].max() - 60]
+_n_neg_distinct = int(np.unique(np.round(_neg_tail['mB_true'].values, 12)).size)
+_rx_neg = lensed_quasar('RXJ1131-1231', dt=-60.0, noise=False)
+_rx_neg_tail = _rx_neg[_rx_neg['mjd'] > _rx_neg['mjd'].max() - 60]
+_n_rx_neg_distinct = int(np.unique(np.round(_rx_neg_tail['mB_true'].values, 12)).size)
+_n_rx_neg_nights = int(_rx_neg_tail['night'].nunique())
 
 _buf = io.StringIO()
 with contextlib.redirect_stdout(_buf):
@@ -39,6 +47,8 @@ print("CHECKS" + json.dumps(dict(
     merr_bright=float(mag_err(21.5, 24.0)),
     d_syn=float(_d_syn), d_rx=float(_d_rx), d_rx_clean=float(_d_rx_clean),
     n_rx=len(_rx),
+    n_neg_distinct=_n_neg_distinct, n_rx_neg_distinct=_n_rx_neg_distinct,
+    n_rx_neg_nights=_n_rx_neg_nights,
     empty_lens=[len(_ec), len(_eo), len(_eq)], empty_delay_nan=bool(np.isnan(_ed)),
     empty_frac=float(_ef), msg=_msg,
     n_cos=len(_cc),
@@ -65,6 +75,15 @@ def test_part3_brief_checks(nb_checks):
     assert abs(c['d_syn'] - 30) <= 2                 # noise-free daily synthetic
     assert np.isfinite(c['d_rx'])                    # RXJ1131 returns a number
     assert abs(c['merr'] - 0.217) < 1e-3
+
+
+def test_lensed_quasar_negative_delay(nb_checks):
+    c = nb_checks
+    # dt < 0: image B at t is A at t + |dt|, so the DRW grid must reach past the last visit.
+    # Before the fix B was frozen (one value) over the last |dt| days.
+    assert c['n_neg_distinct'] >= 10
+    if c['n_rx_neg_nights'] >= 10:
+        assert c['n_rx_neg_distinct'] >= 10
 
 
 def test_part3_empty_preset(nb_checks):
