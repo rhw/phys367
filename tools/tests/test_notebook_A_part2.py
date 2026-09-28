@@ -11,6 +11,9 @@ _ax2 = sky_map('m5_coadd', 'r')
 _main = main_survey_medians()
 _cmp = compare_to_mine(plan_survey(18000, 30, DEFAULT_SPLIT))
 _pts = real_vs_worksheet()
+_gap_ax = sky_map('median_night_gap', 'r')
+_titles = [_ax.get_title(), _ax2.get_title(), _gap_ax.get_title()]
+_y1 = year1_coadd_area(6)
 print("CHECKS" + json.dumps(dict(
     nmaps=len(_m),
     pct_vis=float(_b['% of visits'].sum()), pct_hrs=float(_b['% of hours'].sum()),
@@ -23,6 +26,7 @@ print("CHECKS" + json.dumps(dict(
     cmp_cols=sorted(_cmp.columns), cmp_rows=list(_cmp.index),
     m5r_med=float(_pts.loc['m5', 'median (simulation)']),
     ddf=sorted(DDF_FIELDS),
+    titles=_titles, y1_area=float(_y1),
 )))
 '''
 
@@ -51,3 +55,11 @@ def test_part2_extras(nb_checks):
     assert 'yours: visits' in c['cmp_cols'] and 'real: visits' in c['cmp_cols']
     assert 23.8 < c['m5r_med'] < 24.3           # r main visits at preset points
     assert c['ddf'] == sorted(['COSMOS', 'ECDFS', 'EDFS', 'ELAIS-S1', 'XMM-LSS'])
+
+
+def test_part2_year1_and_titles(nb_checks):
+    c = nb_checks
+    assert 18500 <= c['y1_area'] <= 19500        # text says "about 19,000" (from the maps extract)
+    gap_title = c['titles'][2]
+    assert 'all bands' in gap_title and 'r band' not in gap_title
+    assert c['titles'][0].startswith('u band') and c['titles'][1].startswith('r band')

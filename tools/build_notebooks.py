@@ -582,6 +582,8 @@ PART2_CELLS = [
         dec = np.radians(m["dec"].values)
         # Colour limits default to the 1st-99th percentiles so a few deep fields don't wash
         # out the rest of the sky; pass vmin=/vmax= to override.
+        # median_night_gap counts nights with a visit in any band, so it has no band.
+        band_txt = "all bands" if col == "median_night_gap" else f"{band} band"
         kw = dict(s=2.5, cmap="viridis", linewidths=0,
                   vmin=np.percentile(vals, 1) if len(vals) else None,
                   vmax=np.percentile(vals, 99) if len(vals) else None)
@@ -592,8 +594,8 @@ PART2_CELLS = [
                             "270°", "240°", "210°"], fontsize=7)
         ax.grid(True, alpha=0.3)
         plt.colorbar(sc, ax=ax, orientation="horizontal", pad=0.06, shrink=0.7, extend="both",
-                     label=f"{band}: {COL_LABELS.get(col, col)}")
-        ax.set_title(f"{band} band, {'10 years' if which == '10yr' else 'Year 1'}: "
+                     label=f"{band_txt}: {COL_LABELS.get(col, col)}")
+        ax.set_title(f"{band_txt}, {'10 years' if which == '10yr' else 'Year 1'}: "
                      f"{COL_LABELS.get(col, col)}", fontsize=10, pad=14)
         return ax
 
@@ -607,9 +609,8 @@ PART2_CELLS = [
 
     ### Year 1 vs 10 years
 
-    Phil Marshall (Sep 23) pointed out that Year 1 may not give enough visits to coadd much area
-    outside the deep fields. Compare the r-band visits after Year 1 and after 10 years.
-    (This simulation has no storm downtime, so the real Year 1 could be thinner.)
+    Compare the r-band visits after Year 1 and after 10 years. Note that the two colour scales are
+    different.
     """),
     _c("code", """
     fig, axes = plt.subplots(1, 2, figsize=(13, 4), subplot_kw={"projection": "mollweide"})
@@ -617,10 +618,29 @@ PART2_CELLS = [
     sky_map("nvis", "r", which="10yr", ax=axes[1])
     plt.show()
     """),
+    _c("code", """
+    PIXEL_AREA = 41253 / 49152   # deg^2 per pixel (HEALPix nside = 64: 12 * 64^2 pixels)
+
+    def year1_coadd_area(min_visits=6):
+        \"\"\"Area (deg^2) with at least min_visits Year-1 visits in every one of the six bands.\"\"\"
+        m = load("maps")
+        y1 = m.pivot(index="hpix", columns="band", values="nvis_y1").reindex(columns=BANDS).fillna(0)
+        return float((y1.min(axis=1) >= min_visits).sum() * PIXEL_AREA)
+
+    print(f"Area with >= 6 Year-1 visits in every band: {year1_coadd_area(6):,.0f} deg^2 "
+          "(from the maps extract; nominal survey, no downtime, 1.75-deg circular footprint)")
+    """),
     _c("md", """
-    **Where could you build a Year-1 coadd with ≥6 visits per band?** Count it: how many deg² have
-    `nvis_y1 >= 6` in every band? (Each pixel is about 0.84 deg².) What does that mean for
-    science you'd want to do in Year 1?
+    - In this baseline simulation, about 19,000 deg² get at least 6 visits in every band during
+      Year 1 (from the maps extract; nominal survey, no downtime; our 1.75° circular footprint
+      ignores chip gaps and quality cuts, so this is generous).
+    - Phil Marshall showed on Sep 23 that *updated* simulations of Year 1 (June 2026–June 2027) do
+      not give enough visits (6+ after quality cuts) to coadd much area beyond the deep drilling
+      fields.
+
+    **Two answers to one question.** Both come from simulations of the same survey. List the
+    differences in assumptions that could turn ~19,000 deg² into "mostly just the deep fields".
+    Which would you check first?
 
     ### How often does the survey come back?
 
@@ -628,6 +648,7 @@ PART2_CELLS = [
     median gap between nights with a visit in any band, over 10 years (from the simulation).
     """),
     _c("code", """
+    # The gap is the same on every band row of a pixel; "r" just picks the r-band rows (pixels r visited).
     sky_map("median_night_gap", "r", vmin=0, vmax=15)
     plt.show()
     """),
