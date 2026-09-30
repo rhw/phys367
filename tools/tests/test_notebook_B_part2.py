@@ -21,6 +21,8 @@ out["ilim_worse"] = float(i_limit(1.1))
 out["frac_bright_vs_faint"] = [float(frac_resolved(20.0, 0.7)), float(frac_resolved(25.0, 0.7))]
 out["frac_limits"] = [float(frac_resolved(25.0, 0.01)), float(frac_resolved(25.0, 20.0))]
 out["stricter_cut_fewer"] = bool(usable_density(0.7, r_min=0.5) < usable_density(0.7))
+out["second_moment"] = float(usable_density(0.7, sigma_per_rd=np.sqrt(3)))
+out["printed_a"] = float(usable_density(0.7, median_over_a=0.833))
 out["widget_returns"] = repr(_lensing_widget(0.9, 1/3, True))
 show_lensing(1.1, r_min=0.25, depth=False)
 plt.close("all")
@@ -38,8 +40,11 @@ def test_part2(run_notebook_checks):
     assert all(x <= y + 1e-9 for x, y in zip(d[12:], dn[12:]))
     assert abs(c["fid"] / 37.0 - 1) < 0.25, c["fid"]
     m = c["markers"]
-    assert set(m) == {"design", "median seeing", "first night", "first ~15 days"}
-    assert m["design"] > m["median seeing"] > m["first night"] > m["first ~15 days"]
+    names = ["design", "first-night seeing (atmosphere only)", "first night delivered",
+             "first ~15 days delivered"]
+    assert set(m) == set(names)
+    assert all(m[a] > m[b] for a, b in zip(names, names[1:])), m
+    assert 44 < c["second_moment"] < 47 and 45 < c["printed_a"] < 49
     assert abs(c["ilim_fid"] - 25.3) < 1e-9
     assert c["ilim_worse"] < 25.3
     bright, faint = c["frac_bright_vs_faint"]
@@ -58,8 +63,10 @@ def test_part2_source_rules():
     for cite in ("Miller et al. 2013", "Mandelbaum et al. 2005", "Chang et al. 2013",
                  "eq. 3.7", "Marshall"):
         assert cite in part2, cite
-    for val in ("0.73", "0.91", "1.1", "0.078", "0.04", "0.45"):
+    for val in ("0.73", "0.91", "1.1", "0.078", "0.04", "0.45", "Table 2", "0.71″"):
         assert val in part2, val
+    assert "eq. 6" not in part2 and "median seeing\"" not in part2
+    assert "_ = show_lensing(1.1)" in part2
     assert part2.count("Where does this break?") >= 2
     for word in ("colour", "centre", "modelling", "optimise", "normalis"):
         assert word not in src.lower()

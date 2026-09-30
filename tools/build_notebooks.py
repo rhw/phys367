@@ -1779,14 +1779,15 @@ B_PART2_CELLS = [
 
     | PSF FWHM | what it is | source |
     |---|---|---|
-    | **0.7″** | the design seeing: the reference value in the depth formula, and on Monday's worksheet | Ivezić et al. 2019, eq. 6 |
-    | **0.73″** | median seeing over the same first ~15 days | Phil Marshall, Sep 23 overview |
-    | **0.91″** | median delivered image quality, first night | Phil Marshall, Sep 23 overview |
-    | **1.1″** | median delivered image quality, first ~15 days | Phil Marshall, Sep 23 overview |
+    | **0.7″** | the design seeing, rounded (Monday's worksheet) | Ivezić et al. 2019, Table 2: expected delivered median zenith seeing (FWHM) 0.71″ in i (FWHM$_\text{eff}$ 0.80″) |
+    | **0.73″** | first-night median seeing (atmosphere only: what you'd get if the telescope added nothing) | Phil Marshall, Sep 23 overview |
+    | **0.91″** | first-night median delivered image quality | Phil Marshall, Sep 23 overview |
+    | **1.1″** | median delivered image quality, first ~15 days in survey | Phil Marshall, Sep 23 overview |
 
-    Marshall also reported a median PSF ellipticity of 0.078 on the first night, against a
-    requirement of 0.04. He put the telescope's and camera's own contribution at 0.45″ in
-    total: dome seeing 0.3–0.4″ and tracking ~0.1″. These are early commissioning numbers.
+    On the first night Marshall also reported a median PSF ellipticity of 0.078 (the requirement
+    is 0.04). For the first ~15 days he listed, as separate items: total optical-system
+    contribution 0.45″; dome seeing 0.3–0.4″; tracking error ~0.1″. These are early commissioning
+    numbers.
     """),
     _c("md", r"""
     ### 1. A toy model for usable galaxies
@@ -1798,7 +1799,7 @@ B_PART2_CELLS = [
     the Science Book's "gold sample" limit, $i < 25.3$ (S/N > 20 for point sources in median
     conditions), that is ≈ 55 arcmin⁻² (*Science Book §3.7.2*).
 
-    **How big they are.** Miller et al. 2013 (the CFHTLenS shape paper, Appendix B1, eq. B1)
+    **How big they are.** Miller et al. 2013 (the CFHTLenS shape paper, Appendix B, §B1, eq. B1)
     fit the median disk scale length $r_d$ of galaxies measured with Hubble (Simard et al. 2002)
     against magnitude, over $18.5 < i_{814} < 25.5$:
 
@@ -1820,8 +1821,11 @@ B_PART2_CELLS = [
     **Our choices (not from any paper).** An exponential disk's half-light radius is
     $1.678\,r_d$. We replace each galaxy by a Gaussian with the same half-light radius
     ($\sigma_\text{gal} = 1.678\,r_d/1.1774$). We use the PSF FWHM in the table above as a Gaussian
-    FWHM ($\sigma_\text{PSF} = \text{FWHM}/2.355$). We ignore bulges, ellipticity, blending,
-    and the S/N of the shape measurement.
+    FWHM ($\sigma_\text{PSF} = \text{FWHM}/2.355$). We take Hubble's $i_{814}$ to be LSST's
+    $i$. We ignore bulges, ellipticity, blending, and the S/N of the shape measurement.
+    The Gaussian matching matters: matching second moments instead ($\sigma_\text{gal} =
+    \sqrt{3}\,r_d$, the rms radius of an exponential disk) gives ≈ 45 arcmin⁻² at 0.7″ rather
+    than ≈ 41 (this notebook's functions: `usable_density(0.7, sigma_per_rd=np.sqrt(3))`).
 
     **Where does this break?** The size relation comes from disk-dominated galaxies in one small
     Hubble field, measured along the major axis. Mandelbaum et al. warn that the Gaussian form of
@@ -1829,12 +1833,12 @@ B_PART2_CELLS = [
     the number of usable galaxies?
     """),
     _c("code", r'''
-    FWHM_DESIGN = 0.7        # arcsec: design seeing (Ivezic et al. 2019, eq. 6; worksheet)
+    FWHM_DESIGN = 0.7        # arcsec: design seeing, rounded (Ivezic et al. 2019 Table 2: 0.71" in i; worksheet)
     SEEING_MARKERS = {       # PSF FWHM in arcsec
-        "design": 0.7,               # Ivezic et al. 2019, eq. 6
-        "median seeing": 0.73,       # Marshall, Sep 23: median atmospheric seeing, first ~15 days
-        "first night": 0.91,         # Marshall, Sep 23: median delivered image quality, first night
-        "first ~15 days": 1.1,       # Marshall, Sep 23: median delivered image quality, first ~15 days
+        "design": 0.7,                           # Ivezic et al. 2019 Table 2 (0.71" in i), rounded
+        "first-night seeing (atmosphere only)": 0.73,   # Marshall, Sep 23: if the telescope added nothing
+        "first night delivered": 0.91,           # Marshall, Sep 23: median delivered image quality
+        "first ~15 days delivered": 1.1,         # Marshall, Sep 23: median delivered image quality
     }
     I_GOLD = 25.3            # Science Book 3.7.2 "gold sample" limit, i < 25.3
     I_BRIGHT = 18.5          # bright end of the Miller et al. size fit; brighter galaxies are few (< 0.5 arcmin^-2)
@@ -1851,18 +1855,19 @@ B_PART2_CELLS = [
         """Median disk scale length r_d (arcsec) at i-band magnitude i: Miller et al. 2013, eq. B1."""
         return np.exp(-1.145 - 0.269 * (i - 23))
 
-    def frac_resolved(i, fwhm, r_min=1/3):
+    def frac_resolved(i, fwhm, r_min=1/3, median_over_a=1.134, sigma_per_rd=1.678 / 1.1774):
         """Fraction of galaxies at magnitude i with resolution factor R2 > r_min, for a PSF of this FWHM.
 
-        Galaxies: Miller et al. 2013 sizes, each replaced by a Gaussian with the same half-light
-        radius. PSF: a Gaussian with this FWHM (arcsec).
+        Galaxies: Miller et al. 2013 sizes, each replaced by a Gaussian of width
+        sigma_per_rd * r_d (default: the same half-light radius). PSF: a Gaussian with this FWHM
+        (arcsec). median_over_a sets the size scale a = median r_d / median_over_a.
         """
         sigma_psf = fwhm / 2.3548
         sigma_gal_min = sigma_psf * np.sqrt(r_min / (1 - r_min))   # R2 > r_min  <=>  sigma_gal > this
-        rd_min = sigma_gal_min * 1.1774 / 1.678                   # the scale length with that sigma
+        rd_min = sigma_gal_min / sigma_per_rd                     # the scale length with that sigma
         # Miller et al.: p(r) ~ r exp[-(r/a)^(4/3)], with a set so the median is eq. B1.
         # For this distribution the median is 1.134 a.
-        a = median_scalelength(i) / 1.134
+        a = median_scalelength(i) / median_over_a
         x = (rd_min / a) ** (4 / 3)
         # P(r > rd_min): with x = (r/a)^(4/3) this is a gamma distribution of shape 3/2,
         # whose upper tail has the closed form below.
@@ -1898,16 +1903,17 @@ B_PART2_CELLS = [
         """Toy magnitude limit: i < 25.3 at the design seeing, shifted by the change in i-band m5."""
         return I_GOLD + m5("i", fwhm_eff=fwhm_to_eff(fwhm)) - m5("i", fwhm_eff=fwhm_to_eff(FWHM_DESIGN))
 
-    def usable_density(fwhm, r_min=1/3, depth=True):
+    def usable_density(fwhm, r_min=1/3, depth=True, **size_kw):
         """Toy: galaxies per arcmin^2 with R2 > r_min, down to the magnitude limit.
 
         depth=True moves the limit with the seeing (i_limit); depth=False keeps i < 25.3.
         This is a count of resolved galaxies, not Chang et al.'s weighted n_eff.
+        size_kw (median_over_a, sigma_per_rd) are passed to frac_resolved.
         """
         i_max = i_limit(fwhm) if depth else I_GOLD
         edges = np.linspace(I_BRIGHT, i_max, 401)
         mid = 0.5 * (edges[1:] + edges[:-1])
-        return float(np.sum(counts_per_mag(mid) * frac_resolved(mid, fwhm, r_min) * np.diff(edges)))
+        return float(np.sum(counts_per_mag(mid) * frac_resolved(mid, fwhm, r_min, **size_kw) * np.diff(edges)))
 
     n_design = usable_density(FWHM_DESIGN)
     print(f"{'':16} {'FWHM':>6} {'i limit':>8} {'resolved only':>14} {'+ depth loss':>13} {'vs design':>10}")
@@ -1934,7 +1940,7 @@ B_PART2_CELLS = [
     If the slider doesn't appear, call `show_lensing(fwhm, r_min=1/3, depth=True)` directly.
     """),
     _c("code", r'''
-    def show_lensing(fwhm=0.73, r_min=1/3, depth=True):
+    def show_lensing(fwhm=0.91, r_min=1/3, depth=True):
         """Plot usable density vs PSF FWHM, and what is lost by magnitude at this FWHM. Returns the density."""
         grid = np.linspace(0.4, 1.6, 61)
         n_here = usable_density(fwhm, r_min, depth)
@@ -1967,7 +1973,7 @@ B_PART2_CELLS = [
         plt.show()
         return n_here
 
-    show_lensing(1.1)
+    _ = show_lensing(1.1)
     '''),
     _c("code", r'''
     from ipywidgets import Checkbox
@@ -1976,15 +1982,16 @@ B_PART2_CELLS = [
         show_lensing(fwhm, r_min, depth)          # don't echo the returned density
 
     sliders(_lensing_widget,
-            fwhm=FloatSlider(value=0.73, min=0.4, max=1.6, step=0.01,
+            fwhm=FloatSlider(value=0.91, min=0.4, max=1.6, step=0.01,
                              description="PSF FWHM (″)", **_W),
             r_min=FloatSlider(value=1/3, min=0.1, max=0.6, step=0.01,
                               description="resolution cut R₂ >", **_W),
             depth=Checkbox(value=True, description="include depth loss"));
     '''),
     _c("md", r"""
-    **What does 1.1″ cost?** Compare the usable density at 1.1″ with 0.73″. How much of the loss
-    comes from resolution and how much from depth? How does the answer change if you move the
+    **What does 1.1″ cost?** Compare the usable density at 1.1″ (first ~15 days, delivered) with
+    0.91″ (first night, delivered) and with the 0.7″ design. How much of the loss comes from
+    resolution and how much from depth? How does the answer change if you move the
     resolution cut?
 
     **How rough is "figure of merit ∝ $n_\text{eff}$"?** Very rough. The error on the lensing power
@@ -1994,10 +2001,12 @@ B_PART2_CELLS = [
     "FoM ∝ $n_\text{eff}$" as a way to rank options, not a number to quote. On which scales does
     losing galaxies cost you almost nothing, and where does it cost more than proportionally?
 
-    **Where does the extra come from?** Marshall's breakdown: 0.45″ in total from the telescope
-    and camera (dome seeing 0.3–0.4″, tracking ~0.1″), against a median seeing of 0.73″.
-    Do blurs from independent sources add linearly or in quadrature? Does 0.45″ account for the
-    gap between 0.73″ and 1.1″? Which of those contributions can be fixed, and which can't?
+    **Where does the extra come from?** On the first night the atmosphere alone gave 0.73″ and
+    the delivered image quality was 0.91″. For the first ~15 days Marshall listed: delivered
+    1.1″; total optical-system contribution 0.45″; dome seeing 0.3–0.4″; tracking error ~0.1″.
+    Independent blurs add roughly in quadrature. Do dome seeing and tracking add up to 0.45″? What
+    would the first night's optical-system contribution have been? What median seeing would make
+    0.45″ consistent with 1.1″? Which contributions can be fixed, and which can't?
 
     **Why does PSF ellipticity matter?** The first-night median PSF ellipticity was 0.078, against
     a requirement of 0.04. The lensing shear you're after is a few percent at most (Chang et al.
@@ -2009,9 +2018,12 @@ B_PART2_CELLS = [
     > **Go deeper.** Miller et al. write the size distribution's scale as $a = r_d/0.833$. For
     > $p(r) \propto r\,e^{-(r/a)^{4/3}}$, the median is $1.134\,a$, so $a = r_d/0.833$ would put the
     > median at $1.36\,r_d$, not at $r_d$. The paper also says it chose $a$ to match the median of
-    > eq. B1, and we follow that. Check the median numerically. Then redo the design value with
-    > their $a$ (larger galaxies). How much does the answer move, and how does that compare with
-    > the gap between our toy and Chang et al.?
+    > eq. B1, and we follow that. We can't tell from the paper which constant the lensfit code
+    > actually used. With our choice the design value is ≈ 41 arcmin⁻²; with the printed constant,
+    > `usable_density(0.7, median_over_a=0.833)`, it is ≈ 47 (this notebook's functions).
+    > Check the median of $r\,e^{-(r/a)^{4/3}}$ numerically. For which $\alpha$ is the median of
+    > $r\,e^{-(r/a)^\alpha}$ equal to $0.833\,a$? (Try $\alpha = 2$.) How does the spread between
+    > these choices compare with the gap between our toy and Chang et al.?
     """),
 ]
 
