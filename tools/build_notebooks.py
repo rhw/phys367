@@ -1247,6 +1247,12 @@ B_INTRO_CELLS = [
     lensing, and the layout of the focal plane. It goes with Aaron Roodman's lecture on Wednesday
     (Sep 30), and it compares with the first on-sky numbers from Phil Marshall's Sep 23 overview.
 
+    Several of the design questions in Aaron's Sep 30 lecture come with numbers you can compute
+    here: what the three mirrors (and three lenses) cost in throughput, and how the detector's
+    thickness shows up at 1000 nm (Part 1); what the camera's own blur, which depends on a flat
+    focal plane, costs weak lensing (Part 2); and the plate scale, the 10 µm pixels, and the 2 s
+    readout that put the electronics inside the cryostat (the start of Part 3).
+
     **How to use it.** In Colab, choose *Runtime → Run all*, then move the sliders. Every slider
     wraps a plain function you can call directly. Use the direct call for your hand-in figure,
     because sliders don't show up in PDFs.
@@ -1424,9 +1430,19 @@ B_PART1_CELLS = [
 
     show_components()
     '''),
+    _c("code", r'''
+    QE_1000 = float(thr.loc[thr["wavelength_nm"] == 1000, "detector"].iloc[0])   # syseng detector curve
+    print(f"detector QE at 1000 nm (this notebook's syseng curve): {QE_1000:.3f}")
+    '''),
     _c("md", r"""
     **Read the plot.** Which component limits the u band? Which one sets the red edge of y? Where
     does the atmosphere matter most?
+
+    **The red edge of the detector.** Aaron Roodman's slide says
+    "100μm of Si gives about 30% QE at λ=1000nm" (Roodman, Sep 30 lecture, slide 22). The cell above reads our detector curve at
+    1000 nm. Our curve is the lower of the two vendors' QE, with syseng's loss terms folded in.
+    How close is it to his number, and would you expect the two to agree? What would a thinner
+    (or thicker) layer of silicon do to the y band?
 
     ### 2. Photons from a source: the zeropoint
 
@@ -1726,7 +1742,8 @@ B_PART1_CELLS = [
     *Sources: Rubin's field of view is 9.6 deg² (Ivezić et al. 2019); the effective area is rubin_sim's
     default, as above. This is a toy model.* Our Rubin étendue, ≈ 311 m² deg², is rubin_sim's
     effective area (6.423 m effective diameter) × 9.6 deg²; Ivezić et al. 2019 Table 1 quotes
-    319 m² deg² because it uses a 6.5 m effective diameter.
+    319 m² deg² because it uses a 6.5 m effective diameter. Aaron Roodman's lecture quotes the same
+    "LSST Etendue = 319 m2deg2" (Roodman, Sep 30 lecture, slide 3).
 
     **Where does this break?** The argument assumes every visit is sky-noise limited, the overhead
     per visit is negligible, and the telescope has the same number of good nights. Which of these
@@ -1906,13 +1923,15 @@ B_PART2_CELLS = [
         """Toy magnitude limit: i < 25.3 at the design seeing, shifted by the change in i-band m5."""
         return I_GOLD + m5("i", fwhm_eff=fwhm_to_eff(fwhm)) - m5("i", fwhm_eff=fwhm_to_eff(FWHM_DESIGN))
 
-    def usable_density(fwhm, r_min=1/3, depth=True, **size_kw):
+    def usable_density(fwhm, r_min=1/3, depth=True, camera_fwhm=0.0, **size_kw):
         """Toy: galaxies per arcmin^2 with R2 > r_min, down to the magnitude limit.
 
         depth=True moves the limit with the seeing (i_limit); depth=False keeps i < 25.3.
+        camera_fwhm (arcsec, default 0) is an extra blur added in quadrature to fwhm.
         This is a count of resolved galaxies, not Chang et al.'s weighted n_eff.
         size_kw (median_over_a, sigma_per_rd) are passed to frac_resolved.
         """
+        fwhm = float(np.hypot(fwhm, camera_fwhm))      # independent blurs add in quadrature
         i_max = i_limit(fwhm) if depth else I_GOLD
         edges = np.linspace(I_BRIGHT, i_max, 401)
         mid = 0.5 * (edges[1:] + edges[:-1])
@@ -2017,7 +2036,38 @@ B_PART2_CELLS = [
     cut, $R_2 = 1/3$, is two-thirds PSF by second moment. If your model of the PSF's ellipticity is
     off by a small fraction, what happens to the shear you infer? Why would a small PSF ellipticity
     be easier to correct than a large one?
+    """),
+    _c("md", r"""
+    ### 4. The camera's own blur
 
+    Aaron Roodman's budget for the camera: "Point Spread Function from Camera < 0.3”; largest
+    contribution is diffusion in CCD ~ 0.2”", as long as the focal plane is flat to within 5 µm
+    rms (Roodman, Sep 30 lecture, slide 35). The diffusion number follows from his slide 20:
+    photoelectrons drifting through the 100 µm of silicon spread by "σ = ~4μm". At 0.2″ per
+    10 µm pixel (Part 1's pixel scale) that is σ ≈ 0.08″, or FWHM = 2.355σ ≈ 0.19″.
+
+    `usable_density(fwhm, camera_fwhm=...)` adds a camera blur in quadrature to the FWHM you give
+    it: $\text{FWHM}^2 = \text{FWHM}_\text{in}^2 + \text{FWHM}_\text{camera}^2$. The default,
+    `camera_fwhm=0`, reproduces every number above. The cell below puts his whole 0.3″ budget on
+    top of the 0.7″ design seeing.
+
+    **Where does this break?** Blurs add in quadrature only if they are independent and roughly
+    Gaussian. Marshall's delivered image quality (0.91″, 1.1″) was measured on the sky, through
+    the camera. If you add a camera term to those numbers, do you double count? Which of the four
+    numbers in the table at the top of Part 2 already include the camera, and which don't?
+    """),
+    _c("code", r'''
+    DIFFUSION_SIGMA_UM = 4.0      # Roodman, Sep 30 lecture, slide 20: "sigma = ~4 um"
+    DIFFUSION_FWHM = 2.3548 * DIFFUSION_SIGMA_UM / 10.0 * PIXEL_SCALE   # arcsec, at 0.2" per 10 um
+    CAMERA_FWHM_MAX = 0.3         # Roodman, Sep 30 lecture, slide 35: camera PSF < 0.3"
+
+    print(f"CCD diffusion: sigma = {DIFFUSION_SIGMA_UM:.0f} um = {DIFFUSION_FWHM / 2.3548:.3f}\" "
+          f"-> FWHM {DIFFUSION_FWHM:.2f}\"")
+    for cam in [0.0, DIFFUSION_FWHM, CAMERA_FWHM_MAX]:
+        print(f"design 0.7\" with camera_fwhm = {cam:.2f}\": total {np.hypot(0.7, cam):.3f}\", "
+              f"usable density {usable_density(0.7, camera_fwhm=cam):5.1f} arcmin^-2 (toy)")
+    '''),
+    _c("md", r"""
     > **Go deeper.** Miller et al. write the size distribution's scale as $a = r_d/0.833$. For
     > $p(r) \propto r\,e^{-(r/a)^{4/3}}$, the median is $1.134\,a$, so $a = r_d/0.833$ would put the
     > median at $1.36\,r_d$, not at $r_d$. The paper also says it chose $a$ to match the median of
@@ -2049,7 +2099,106 @@ B_PART3_CELLS = [
     imaging pixels printed below total 3.09 billion) over a 9.6 deg² field of view, with
     0.2″ pixels. *Source: Ivezić et al. 2019, §2.6.2, Fig. 12 and Table 1; LSST Science Book
     2009, §2.4.*
+    """),
+    _c("md", r"""
+    ### The numbers that set the camera
 
+    Aaron Roodman's lecture asked where these numbers come from. Here is the arithmetic behind his
+    Questions 3a, 3b, 4 and 5: how to compute the plate scale, why 0.2″ per pixel, why 10 µm
+    pixels (with the pixel count that follows), and why the readout electronics sit inside the
+    cryostat.
+
+    | quantity | formula | Roodman's number |
+    |---|---|---|
+    | plate scale | $s = 206265''/f$ per unit length on the focal plane | "A plate scale of 0.2”/10μm pixels, corresponds to a Focal length of 10.3m" (Roodman, Sep 30 lecture, slide 23) |
+    | focal ratio | $N = f/D$ | "for an 8.4m diameter primary mirror that gives a focal ratio of F#/1.23" (Roodman, Sep 30 lecture, slide 23; also slide 10) |
+    | sampling | pixels per FWHM $=\text{FWHM}/p$ | "at least 2 pixels to fill the best possible Image Blur (FWHM) which is roughly 0.4”" (Roodman, Sep 30 lecture, slide 18) |
+    | pixel count | $\Omega/p^2$ | "10 square degrees" and "3.2 billion pixels" (Roodman, Sep 30 lecture, slide 23) |
+    | readout time | $t_\text{read} = (\text{pixels per CCD}/\text{amplifiers})/\text{pixel rate}$ | "16 MPixels @ 0.5 MHz ➥16 Amplifier Segments", "2 second readout" (Roodman, Sep 30 lecture, slides 25–26) |
+    | shutter-open fraction | $n\,t_\text{exp}/[n\,(t_\text{exp} + t_\text{read}) + t_\text{slew}]$ | "Pairs of Short 15 second Exposures" (Roodman, Sep 30 lecture, slide 23) |
+
+    For the field of view we use 9.6 deg² (Ivezić et al. 2019), not his round 10 deg². For the
+    slew and settle between visits we use 5 s: Phil Marshall's Sep 23 overview says "Move to and
+    settle on the next 3.5 deg field of view in 5 secs", and Aaron's slide 10 says
+    "~5 second slews of 4°". Counting one readout per exposure, with none of it hidden under the slew, and
+    ignoring the time the shutter takes to move, is our bookkeeping, not the project's.
+
+    **How many pixels?** 9.6 deg² at exactly 0.2″ is 3.11 billion pixels, and his 10 deg² gives
+    3.24 billion. (The cell below uses the 0.2003″ pixel that f = 10.3 m gives, so it prints
+    3.10 and 3.23 billion.) 189 CCDs × 4096 × 4096 is 3.17 billion. The camera description
+    used below gives 3.09 billion *imaging* pixels. All of these round to "3.2 billion" or
+    near it; which one is the right number depends on the question you are asking.
+
+    If the sliders don't appear, call `camera_numbers(focal_length_m=..., aperture_m=...,
+    pixel_um=..., amps_per_ccd=..., pixel_rate_khz=...)` directly.
+    """),
+    _c("code", r'''
+    ARCSEC_PER_RAD = 206265.0
+
+    def camera_numbers(focal_length_m=10.3, aperture_m=8.4, pixel_um=10.0, amps_per_ccd=16,
+                       pixel_rate_khz=500.0, ccd_mpix=16.0, fov_deg2=9.6, fwhm_best=0.4,
+                       t_exp=15.0, n_exp=2, slew_s=5.0, verbose=True):
+        """Plate scale, focal ratio, sampling, pixel count, readout time and shutter-open fraction.
+
+        Defaults are Roodman's Sep 30 lecture (f = 10.3 m, D = 8.4 m, 10 um pixels, 16 Mpix CCDs
+        with 16 amplifiers at 500 kHz, 0.4" best image blur, 2 x 15 s), the 9.6 deg^2 field of
+        Ivezic et al. 2019, and a 5 s slew and settle (Marshall, Sep 23; Roodman slide 10).
+        Returns a dict; verbose=True also prints it.
+        """
+        plate_scale = ARCSEC_PER_RAD / (focal_length_m * 1e3)       # arcsec per mm
+        pixel_scale = plate_scale * pixel_um * 1e-3                 # arcsec per pixel
+        t_read = ccd_mpix * 1e6 / amps_per_ccd / (pixel_rate_khz * 1e3)   # s
+        visit = n_exp * (t_exp + t_read)                            # s, one readout per exposure
+        out = {"plate_scale": plate_scale, "pixel_scale": pixel_scale,
+               "f_ratio": focal_length_m / aperture_m,
+               "pixels_per_fwhm": fwhm_best / pixel_scale,
+               "n_pixels": fov_deg2 * 3600**2 / pixel_scale**2,
+               "n_pixels_10deg2": 10.0 * 3600**2 / pixel_scale**2,
+               "t_read": t_read,
+               "shutter_open_no_slew": n_exp * t_exp / visit,
+               "shutter_open": n_exp * t_exp / (visit + slew_s)}
+        if verbose:
+            print(f"plate scale      {plate_scale:.2f}\"/mm -> {pixel_scale:.3f}\" per {pixel_um:g} um pixel")
+            print(f"focal ratio      f/{out['f_ratio']:.2f}  (f = {focal_length_m:g} m, D = {aperture_m:g} m)")
+            print(f"sampling         {out['pixels_per_fwhm']:.2f} pixels across a {fwhm_best:g}\" FWHM")
+            print(f"pixel count      {out['n_pixels'] / 1e9:.2f} billion for {fov_deg2:g} deg^2 "
+                  f"({out['n_pixels_10deg2'] / 1e9:.2f} billion for 10 deg^2)")
+            print(f"readout          {t_read:.2f} s  ({ccd_mpix:g} Mpix / {amps_per_ccd} amplifiers "
+                  f"at {pixel_rate_khz:g} kHz)")
+            print(f"shutter open     {out['shutter_open_no_slew']:.1%} of a {n_exp} x {t_exp:g} s visit; "
+                  f"{out['shutter_open']:.1%} with a {slew_s:g} s slew")
+        return out
+
+    _ = camera_numbers()
+    '''),
+    _c("code", r'''
+    def _camera_widget(focal_length_m, aperture_m, pixel_um, amps_per_ccd, pixel_rate_khz):
+        camera_numbers(focal_length_m, aperture_m, pixel_um, amps_per_ccd, pixel_rate_khz)   # no echo
+
+    sliders(_camera_widget,
+            focal_length_m=FloatSlider(value=10.3, min=3.0, max=30.0, step=0.1,
+                                       description="focal length (m)", **_W),
+            aperture_m=FloatSlider(value=8.4, min=1.0, max=12.0, step=0.1,
+                                   description="aperture (m)", **_W),
+            pixel_um=FloatSlider(value=10.0, min=5.0, max=20.0, step=0.5,
+                                 description="pixel size (µm)", **_W),
+            amps_per_ccd=IntSlider(value=16, min=1, max=64, step=1,
+                                   description="amplifiers per CCD", **_W),
+            pixel_rate_khz=FloatSlider(value=500.0, min=50.0, max=2000.0, step=50.0,
+                                       description="pixel rate (kHz)", **_W));
+    '''),
+    _c("md", r"""
+    **Bigger pixels, slower optics.** What breaks if the pixels were 15 µm instead of 10 µm, with
+    the same focal length? What if the f-ratio were slower (longer focal length, same mirror)?
+    Think about sampling, the size of the focal plane, and how many CCDs you would need.
+
+    **Why hurry?** Why does a 2 s readout matter more for 15 s exposures than it would for 300 s
+    ones? What would a 20 s readout have done to the survey?
+
+    **Where does this break?** $206265''/f$ is the scale on the optical axis. Would you expect it
+    to be the same at the edge of a 3.5° field?
+    """),
+    _c("md", r"""
     **The numbers we draw with.** To place the CCDs we use the camera description in the Rubin
     software, `lsst/obs_lsst` (commit `4cf6266c5d`, files `policy/rafts.yaml`,
     `policy/cameraHeader.yaml` and `policy/lsstCam/R*.yaml`):
@@ -2239,6 +2388,11 @@ B_PART3_CELLS = [
     the 21 raft cells, the 9.6 deg² circle, or the square that encloses the science rafts? The
     Science Book's gaps are "less than a few hundred µm," but ours are 1.3–2.3 mm. Which gap is
     each number about, and which one matters for your science?
+
+    **What else sits between two CCDs' imaging pixels?** Aaron Roodman's photo of a raft is
+    labeled "9 CCD Assembly, 0.5mm gaps" (Roodman, Sep 30 lecture, slide 27). Our nominal layout
+    gives 1.3–2.3 mm between the imaging areas of neighboring CCDs. What else sits between two
+    CCDs' imaging pixels?
     """),
     _c("md", r"""
     ### What Notebook A's circle hid
