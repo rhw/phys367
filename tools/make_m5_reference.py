@@ -1,0 +1,102 @@
+"""Regenerate the syseng reference m5 table for Phys 367 Week 2 Notebook B.
+
+NOT a notebook dependency: run once, in a throwaway environment with rubin_sim and
+syseng_throughputs installed at the pinned commit:
+
+    uv venv --python 3.12 m5venv
+    uv pip install --python m5venv/bin/python rubin-sim "setuptools<81" \\
+        "git+https://github.com/lsst-pst/syseng_throughputs@00570b3d391b5a8671d55341ed51b5e534dab6b4"
+    m5venv/bin/python tools/make_m5_reference.py week2/data tools/tests/data
+
+(``setuptools<81``: syseng's bandpassUtils imports ``pkg_resources``, removed in setuptools 81.)
+
+It calls syseng's own code exactly as the "Overview Paper" notebook in that repository does:
+
+    defaultDirs = st.setDefaultDirs()
+    atmosphere = st.readAtmosphere(defaultDirs['atmosphere'], atmosFile='atmos_10_aerosol.dat')
+    hardware, system = st.buildHardwareAndSystem(defaultDirs, True, atmosphereOverride=atmosphere)
+    m5_std = st.makeM5(hardware, system, exptime=15, nexp=2, readnoise=8.8, othernoise=0,
+                       darkcurrent=0.2)                                  # X = 1.0
+    # and again with atmosFile='pachonModtranAtm_12_aerosol.dat' and X=1.2 -> column m5_X1.2
+
+makeM5 uses the fiducial zenith FWHMeff (u..y = 0.92, 0.87, 0.83, 0.80, 0.78, 0.76 arcsec,
+scaled by X^0.6), the darksky.dat sky spectrum, and an effective area of pi*(6.423 m/2)^2.
+
+Outputs:
+- ``<data_dir>/m5_reference.csv``: one row per band, with a comment header giving the
+  commit SHA, package versions and the call parameters.
+- ``<fixture_dir>/syseng_system_1nm.csv``: syseng's hardware and system curves
+  (X = 1.0 and 1.2), sampled at integer nm over 300-1100 nm; the test reference for
+  tools/make_throughputs_extract.py.
+"""
+import importlib.metadata as md
+import pathlib
+import platform
+import sys
+import warnings
+
+import numpy as np
+import pandas as pd
+
+SYSENG_SHA = "00570b3d391b5a8671d55341ed51b5e534dab6b4"
+BANDS = ("u", "g", "r", "i", "z", "y")
+KW = dict(exptime=15, nexp=2, readnoise=8.8, othernoise=0, darkcurrent=0.2)
+COLS = ["m5", "m5_X1.2", "FWHMeff", "FWHMgeom", "skyMag", "Zp_t", "Cm", "dCm_infinity",
+        "dCm_double", "kAtm", "gamma", "Tb", "Sb", "m5_fid", "m5_min"]
+
+
+def main(data_dir, fixture_dir):
+    warnings.filterwarnings("ignore")
+    import syseng_throughputs as st
+
+    d = st.setDefaultDirs()
+    out = {}
+    for key, atmfile, X in (("X1.0", "atmos_10_aerosol.dat", 1.0),
+                            ("X1.2", "pachonModtranAtm_12_aerosol.dat", 1.2)):
+        atm = st.readAtmosphere(d["atmosphere"], atmosFile=atmfile)
+        hw, system = st.buildHardwareAndSystem(d, True, atmosphereOverride=atm)
+        out[key] = (hw, system, st.makeM5(hw, system, X=X, **KW))
+
+    m5 = out["X1.0"][2].loc[list(BANDS)].copy()
+    m5["m5_X1.2"] = out["X1.2"][2].loc[list(BANDS), "m5"]
+    m5 = m5[COLS]
+    m5.index.name = "band"
+
+    vers = {p: md.version(p) for p in ("syseng_throughputs", "rubin-sim", "rubin-scheduler",
+                                      "numpy", "scipy", "pandas")}
+    header = [
+        "Reference m5 table regenerated with syseng_throughputs' own makeM5 (tools/make_m5_reference.py).",
+        f"syseng_throughputs commit {SYSENG_SHA} (release 1.9, triple-silver mirrors).",
+        "Packages: " + ", ".join(f"{k}=={v}" for k, v in vers.items()) + f"; python {platform.python_version()}.",
+        "hardware, system = buildHardwareAndSystem(setDefaultDirs(), addLosses=True,",
+        "    atmosphereOverride=readAtmosphere(..., 'atmos_10_aerosol.dat'))",
+        "makeM5(hardware, system, exptime=15, nexp=2, readnoise=8.8, othernoise=0, darkcurrent=0.2, X=1.0)",
+        "  (defaults: darksky.dat sky, fiducial zenith FWHMeff * X^0.6, effarea=pi*(6.423/2*100)^2 cm^2, gain=1)",
+        "m5_X1.2: same call with atmosFile='pachonModtranAtm_12_aerosol.dat' and X=1.2 (syseng 'Overview Paper' notebook).",
+        "Units: m5, skyMag (mag/arcsec^2), Zp_t, Cm in AB mag; FWHMeff, FWHMgeom in arcsec; kAtm mag/airmass.",
+        "Visit = 2 x 15 s in every band (including u). m5_fid, m5_min: SRD design and minimum values.",
+    ]
+    data_dir, fixture_dir = pathlib.Path(data_dir), pathlib.Path(fixture_dir)
+    fixture_dir.mkdir(parents=True, exist_ok=True)
+    with open(data_dir / "m5_reference.csv", "w") as f:
+        for line in header:
+            f.write(f"# {line}\n")
+        m5.to_csv(f, float_format="%.6f", lineterminator="\n")
+
+    grid = np.arange(300, 1101)
+    w = out["X1.0"][0]["r"].wavelen
+    idx = np.array([np.argmin(np.abs(w - g)) for g in grid])
+    fx = pd.DataFrame({"wavelength_nm": grid})
+    for b in BANDS:
+        fx[f"hardware_{b}"] = out["X1.0"][0][b].sb[idx]
+        fx[f"system_X1.0_{b}"] = out["X1.0"][1][b].sb[idx]
+        fx[f"system_X1.2_{b}"] = out["X1.2"][1][b].sb[idx]
+    with open(fixture_dir / "syseng_system_1nm.csv", "w") as f:
+        f.write(f"# syseng_throughputs {SYSENG_SHA} buildHardwareAndSystem(addLosses=True) output, "
+                "sampled at integer nm. Generated by tools/make_m5_reference.py.\n")
+        fx.to_csv(f, index=False, float_format="%.6g", lineterminator="\n")
+    print(m5.T.to_string())
+
+
+if __name__ == "__main__":
+    main(*sys.argv[1:3])

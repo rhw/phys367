@@ -1,0 +1,17 @@
+# Reference m5 table regenerated with syseng_throughputs' own makeM5 (tools/make_m5_reference.py).
+# syseng_throughputs commit 00570b3d391b5a8671d55341ed51b5e534dab6b4 (release 1.9, triple-silver mirrors).
+# Packages: syseng_throughputs==1.9.3, rubin-sim==2.6.2, rubin-scheduler==4.5.0, numpy==2.5.3, scipy==1.18.1, pandas==3.0.6; python 3.12.13.
+# hardware, system = buildHardwareAndSystem(setDefaultDirs(), addLosses=True,
+#     atmosphereOverride=readAtmosphere(..., 'atmos_10_aerosol.dat'))
+# makeM5(hardware, system, exptime=15, nexp=2, readnoise=8.8, othernoise=0, darkcurrent=0.2, X=1.0)
+#   (defaults: darksky.dat sky, fiducial zenith FWHMeff * X^0.6, effarea=pi*(6.423/2*100)^2 cm^2, gain=1)
+# m5_X1.2: same call with atmosFile='pachonModtranAtm_12_aerosol.dat' and X=1.2 (syseng 'Overview Paper' notebook).
+# Units: m5, skyMag (mag/arcsec^2), Zp_t, Cm in AB mag; FWHMeff, FWHMgeom in arcsec; kAtm mag/airmass.
+# Visit = 2 x 15 s in every band (including u). m5_fid, m5_min: SRD design and minimum values.
+band,m5,m5_X1.2,FWHMeff,FWHMgeom,skyMag,Zp_t,Cm,dCm_infinity,dCm_double,kAtm,gamma,Tb,Sb,m5_fid,m5_min
+u,23.448532,23.239487,0.920000,0.808240,23.051983,26.524237,22.719265,0.791741,0.533210,0.470116,0.038038,0.022928,0.035351,23.900000,23.400000
+g,24.902441,24.743180,0.870000,0.767140,22.253839,28.508375,24.511574,0.159045,0.083120,0.212949,0.038796,0.142565,0.173458,25.000000,24.600000
+r,24.478566,24.336353,0.830000,0.734260,21.197579,28.360838,24.564727,0.080846,0.039552,0.126369,0.039067,0.124451,0.139813,24.700000,24.300000
+i,24.103234,23.969987,0.800000,0.709600,20.462795,28.171396,24.516816,0.051845,0.024281,0.095764,0.039214,0.104526,0.114164,24.000000,23.600000
+z,23.540091,23.410122,0.780000,0.693160,19.606305,27.782264,24.354430,0.035176,0.015802,0.068417,0.039330,0.073041,0.077792,23.300000,22.900000
+y,22.536956,22.396695,0.760000,0.676720,18.601512,26.817819,23.825489,0.030969,0.013657,0.171009,0.039354,0.030046,0.035172,22.100000,21.700000
