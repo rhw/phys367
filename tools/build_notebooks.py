@@ -2049,7 +2049,7 @@ B_PART2_CELLS = [
     `usable_density(fwhm, camera_fwhm=...)` adds a camera blur in quadrature to the FWHM you give
     it: $\text{FWHM}^2 = \text{FWHM}_\text{in}^2 + \text{FWHM}_\text{camera}^2$. The default,
     `camera_fwhm=0`, reproduces every number above. The cell below puts his whole 0.3″ budget on
-    top of the 0.7″ design seeing.
+    top of 0.7″, as if 0.7″ were atmosphere only. Is it?
 
     **Where does this break?** Blurs add in quadrature only if they are independent and roughly
     Gaussian. Marshall's delivered image quality (0.91″, 1.1″) was measured on the sky, through
@@ -2104,9 +2104,10 @@ B_PART3_CELLS = [
     ### The numbers that set the camera
 
     Aaron Roodman's lecture asked where these numbers come from. Here is the arithmetic behind his
-    Questions 3a, 3b, 4 and 5: how to compute the plate scale, why 0.2″ per pixel, why 10 µm
-    pixels (with the pixel count that follows), and why the readout electronics sit inside the
-    cryostat.
+    Questions 3a, 3b, 4 and 5: how to compute the plate scale, why 0.2″ per pixel, the pixel
+    count that 10 µm pixels imply, and why the readout electronics sit inside the cryostat. The
+    rest of his Question 4 answer is in Part 1 (the detector QE at 1000 nm) and Part 2 (the
+    diffusion of photoelectrons in the CCD).
 
     | quantity | formula | Roodman's number |
     |---|---|---|
@@ -2121,7 +2122,8 @@ B_PART3_CELLS = [
     slew and settle between visits we use 5 s: Phil Marshall's Sep 23 overview says "Move to and
     settle on the next 3.5 deg field of view in 5 secs", and Aaron's slide 10 says
     "~5 second slews of 4°". Counting one readout per exposure, with none of it hidden under the slew, and
-    ignoring the time the shutter takes to move, is our bookkeeping, not the project's.
+    ignoring the time the shutter takes to move, is our bookkeeping, not the project's. Could the
+    second readout happen during the slew? Which way would that move 76.9%?
 
     **How many pixels?** 9.6 deg² at exactly 0.2″ is 3.11 billion pixels, and his 10 deg² gives
     3.24 billion. (The cell below uses the 0.2003″ pixel that f = 10.3 m gives, so it prints
@@ -2193,7 +2195,8 @@ B_PART3_CELLS = [
     Think about sampling, the size of the focal plane, and how many CCDs you would need.
 
     **Why hurry?** Why does a 2 s readout matter more for 15 s exposures than it would for 300 s
-    ones? What would a 20 s readout have done to the survey?
+    ones? Try `camera_numbers(t_exp=300)` and `camera_numbers(t_exp=300, slew_s=0)` next to the
+    default `camera_numbers()`. What would a 20 s readout have done to the survey?
 
     **Where does this break?** $206265''/f$ is the scale on the optical axis. Would you expect it
     to be the same at the edge of a 3.5° field?
@@ -2389,10 +2392,9 @@ B_PART3_CELLS = [
     Science Book's gaps are "less than a few hundred µm," but ours are 1.3–2.3 mm. Which gap is
     each number about, and which one matters for your science?
 
-    **What else sits between two CCDs' imaging pixels?** Aaron Roodman's photo of a raft is
+    **What else sits between two CCDs' imaging pixels?** Aaron Roodman's slide of a raft is
     labeled "9 CCD Assembly, 0.5mm gaps" (Roodman, Sep 30 lecture, slide 27). Our nominal layout
-    gives 1.3–2.3 mm between the imaging areas of neighboring CCDs. What else sits between two
-    CCDs' imaging pixels?
+    gives 1.3–2.3 mm between the imaging areas of neighboring CCDs.
     """),
     _c("md", r"""
     ### What Notebook A's circle hid
