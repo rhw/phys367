@@ -29,9 +29,10 @@ To run the notebooks on your own computer:
    pip install numpy pandas pyarrow matplotlib astropy ipywidgets jupyter
    ```
 
-3. **Open a notebook:**
+3. **Open a notebook** (Notebook A or Notebook B):
    ```bash
    jupyter notebook week2/A_survey_strategy.ipynb
+   jupyter notebook week2/B_camera_to_science.ipynb
    ```
 
 ---

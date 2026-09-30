@@ -1251,8 +1251,9 @@ B_INTRO_CELLS = [
     wraps a plain function you can call directly. Use the direct call for your hand-in figure,
     because sliders don't show up in PDFs.
 
-    **Core path vs. go deeper.** The core path takes about 30–45 minutes. The *Go deeper* boxes are
-    optional.
+    **Core path vs. go deeper.** The core path takes about 30–45 minutes if you don't stop to answer
+    every prompt. The bold prompts are for thinking and discussion (in class and on Slack); only the
+    hand-in is turned in. The *Go deeper* boxes are optional.
 
     *Data note: the throughput curves are the Rubin project's engineering model of the as-built
     hardware (public, from GitHub), and the survey numbers are from public simulations. None of this
@@ -1587,7 +1588,7 @@ B_PART1_CELLS = [
     |---|---|---|
     | **24.7** | the design ("fiducial") depth | Ivezić et al. 2019, Table 1 (SRD design specification, fiducial zenith); Monday's worksheet |
     | **≈ 24.48** | the as-built hardware (release 1.9) at the reference settings: 2 × 15 s, zenith, dark sky, FWHM$_\text{eff}$ 0.83″ | this notebook's `m5("r")`; syseng `makeM5` gives 24.479 |
-    | **24.06** | the median r-band visit in the simulated ten-year survey | baseline v5.3.3 simulation (Notebook A); median seeing 1.03″, airmass 1.18, sky 21.0 mag/arcsec² |
+    | **24.06** | the median r-band visit in the simulated ten-year survey | baseline v5.3.3 simulation (Notebook A); median FWHM$_\text{eff}$ 1.03″ (`seeingFwhmEff`: use it in `m5()` as FWHM$_\text{eff}$, don't convert), airmass 1.18, sky 21.0 mag/arcsec² |
     """),
     _c("code", r'''
     M5_DESIGN_R = 24.7        # Ivezic et al. 2019, Table 1 (SRD design specification, fiducial zenith; also the worksheet)
@@ -1723,7 +1724,9 @@ B_PART1_CELLS = [
        Rubin's 30 s depth.
 
     *Sources: Rubin's field of view is 9.6 deg² (Ivezić et al. 2019); the effective area is rubin_sim's
-    default, as above. This is a toy model.*
+    default, as above. This is a toy model.* Our Rubin étendue, ≈ 311 m² deg², is rubin_sim's
+    effective area (6.423 m effective diameter) × 9.6 deg²; Ivezić et al. 2019 Table 1 quotes
+    319 m² deg² because it uses a 6.5 m effective diameter.
 
     **Where does this break?** The argument assumes every visit is sky-noise limited, the overhead
     per visit is negligible, and the telescope has the same number of good nights. Which of these
@@ -1797,7 +1800,7 @@ B_PART2_CELLS = [
     **How many galaxies.** The counts from Notebook A, $N(<i) = 46\times10^{0.31(i-25)}$ arcmin⁻²
     (*LSST Science Book 2009, eq. 3.7, a fit to CFHTLS Deep counts over 20.5 < i < 25.5*). Down to
     the Science Book's "gold sample" limit, $i < 25.3$ (S/N > 20 for point sources in median
-    conditions), that is ≈ 55 arcmin⁻² (*Science Book §3.7.2*).
+    conditions), that is ≈ 57 arcmin⁻² from eq. 3.7 (the Science Book quotes ≈ 55, §3.7.2).
 
     **How big they are.** Miller et al. 2013 (the CFHTLenS shape paper, Appendix B, §B1, eq. B1)
     fit the median disk scale length $r_d$ of galaxies measured with Hubble (Simard et al. 2002)
@@ -1916,10 +1919,10 @@ B_PART2_CELLS = [
         return float(np.sum(counts_per_mag(mid) * frac_resolved(mid, fwhm, r_min, **size_kw) * np.diff(edges)))
 
     n_design = usable_density(FWHM_DESIGN)
-    print(f"{'':16} {'FWHM':>6} {'i limit':>8} {'resolved only':>14} {'+ depth loss':>13} {'vs design':>10}")
+    print(f"{'':38} {'FWHM':>6} {'i limit':>8} {'resolved only':>14} {'+ depth loss':>13} {'vs design':>10}")
     for name, f in SEEING_MARKERS.items():
         n_d = usable_density(f)
-        print(f"{name:16} {f:5.2f}\" {i_limit(f):8.2f} {usable_density(f, depth=False):14.1f} "
+        print(f"{name:38} {f:5.2f}\" {i_limit(f):8.2f} {usable_density(f, depth=False):14.1f} "
               f"{n_d:13.1f} {n_d / n_design:10.2f}")
     print("(galaxies per arcmin^2; toy model)")
     print(f"Chang et al. 2013 n_eff: {N_EFF_CHANG:.0f} arcmin^-2. Science Book 3.7.2: ~40 arcmin^-2 (+/- 20%).")
@@ -2042,7 +2045,8 @@ B_PART3_CELLS = [
     into 21 "rafts" of 3 × 3 CCDs. Each raft has its own electronics. The four corners of the
     5 × 5 grid hold special rafts with guide sensors (which track the stars during an exposure)
     and wavefront sensors (split, half-size CCDs held just above and below focus, used to keep the
-    optics aligned). Together that is 3.2 gigapixels over a 9.6 deg² field of view, with
+    optics aligned). Together that is 3.2 gigapixels (3.2 counts the full 4k × 4k sensors; the
+    imaging pixels printed below total 3.09 billion) over a 9.6 deg² field of view, with
     0.2″ pixels. *Source: Ivezić et al. 2019, §2.6.2, Fig. 12 and Table 1; LSST Science Book
     2009, §2.4.*
 
