@@ -44,6 +44,11 @@ show_m5("y", aperture_m=12.0, read_noise=0.0, fwhm_eff=0.3, sky_mag=24.0, t_exp=
 show_components()
 show_components(airmass=1.2)
 plt.close("all")
+import inspect
+out["widget_params"] = list(inspect.signature(_m5_widget).parameters)
+out["offset0"] = {b: float(m5(b, fwhm_eff=FWHM_EFF_ZENITH[b] + 0.0) - m5(b)) for b in bands}
+_m5_widget("u", 0.5, 30.0, 1.6, 5.0, 1, 10); _m5_widget("y", 12.0, 0.0, -0.4, 0.0, 300, 1)
+plt.close("all")
 out["sys_peak_r"] = float(np.max(system("r")))
 out["sys_x12_lower"] = bool(np.all(system("u", 1.2) <= system("u", 1.0) + 1e-12))
 out["budget_rubin"] = float(survey_budget(RUBIN_DIAM_EFF_M, RUBIN_FOV_DEG2))
@@ -95,6 +100,12 @@ def test_knobs_and_extremes(nb_checks):
     assert c["extremes_finite"]
     assert 0.3 < c["sys_peak_r"] < 0.8
     assert c["sys_x12_lower"]
+
+
+def test_seeing_slider_is_offset_from_band_fiducial(nb_checks):
+    c = nb_checks
+    assert "seeing_offset" in c["widget_params"]
+    assert all(abs(c["offset0"][b]) < 1e-12 for b in BANDS)
 
 
 def test_etendue_budget_and_chain(nb_checks):

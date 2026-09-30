@@ -116,7 +116,7 @@ PART1_CELLS = [
     $$m_5^\\text{single} = m_5(30\\,\\text{s}) + 1.25\\log_{10}(t_\\text{visit}/30\\,\\text{s})$$
 
     with $m_5(30\\,\\text{s})$ = u 23.9, g 25.0, r 24.7, i 24.0, z 23.3, y 22.1
-    (*Ivezić et al. 2019, Table 2: dark sky, zenith, 5σ point source*).
+    (*Ivezić et al. 2019, Table 1: SRD design specification, fiducial zenith, 5σ point source*).
 
     **Where does this break?** These depths assume a dark sky at zenith with good seeing. The
     simulated survey's median r-band visit reaches only 24.06 (median seeing 1.03″, airmass 1.18,
@@ -145,7 +145,7 @@ PART1_CELLS = [
     weather, and a Moon. Is the average gap the number your science actually cares about?
     """),
     _c("code", """
-    # Single-visit 5-sigma depth at 30 s (Ivezic et al. 2019, Table 2; dark sky, zenith).
+    # Single-visit 5-sigma depth at 30 s (Ivezic et al. 2019, Table 1: SRD design specification, fiducial zenith).
     M5_30S = {"u": 23.9, "g": 25.0, "r": 24.7, "i": 24.0, "z": 23.3, "y": 22.1}
     BANDS = list(M5_30S)
 
@@ -1352,9 +1352,10 @@ B_PART1_CELLS = [
     component products on a 1 nm grid (`tools/make_throughputs_extract.py` in the course repo);
     they match syseng's own `buildHardwareAndSystem` output to about 1 part in 10⁶. Each component
     includes syseng's loss terms (contamination, condensation), and the detector is the minimum of
-    the two CCD vendors' QE curves.* The atmosphere is tabulated at X = 1.0 and X = 1.2 (both
-    MODTRAN models for Cerro Pachón, from syseng). For other airmasses we interpolate
-    $\ln A$ linearly in $X$ between the two curves. That interpolation is our choice, not syseng's.
+    the two CCD vendors' QE curves.* The atmosphere is tabulated at X = 1.0
+    (`atmos_10_aerosol.dat`, syseng's standard X = 1.0 atmosphere with an aerosol component) and
+    X = 1.2 (`pachonModtranAtm_12_aerosol.dat`), both from syseng. For other airmasses we
+    interpolate (and beyond X = 1.2, extrapolate) $\ln A$ linearly in airmass between the two curves. That interpolation is our choice, not syseng's.
 
     **Where does this break?** Every factor here is a single curve for the whole focal plane and
     the whole survey. Which of them would you expect to change across the field of view, from night
@@ -1441,7 +1442,8 @@ B_PART1_CELLS = [
     *Source: AB system (Oke & Gunn 1983); the same sum as rubin_sim's `Sed.calc_adu`, which
     syseng uses. The collecting area is rubin_sim's default, $A_\text{eff} = \pi(6.423\ \text{m}/2)^2$
     = 32.4 m². Rubin's primary mirror is 8.4 m across; the central obscuration makes the effective aperture
-    smaller (Ivezić et al. 2019 quote 6.5 m effective).*
+    smaller (Ivezić et al. 2019 quote 6.5 m effective; rubin_sim's slightly smaller value is used
+    throughout).*
 
     **Where does this break?** Real stars and galaxies don't have flat $f_\nu$. What happens to
     the photon count for a very red or very blue source with the same AB magnitude?
@@ -1525,6 +1527,9 @@ B_PART1_CELLS = [
     $D$ the dark current. Set $S/N = 5$ and solve the quadratic for $C$. Then
     $m_5 = -2.5\log_{10}\!\big[C/(N_0\,t)\big]$.
 
+    For a Gaussian PSF of width $\sigma$, $n_\text{eff} = 4\pi\sigma^2/p^2 = 2.266\,(\text{FWHM}/p)^2$:
+    the number of pixels whose noise an optimal (PSF-weighted) measurement effectively averages over.
+
     *Source: the LSST signal-to-noise document LSE-40 (eq. 27 for $n_\text{eff}$, eq. 45 for
     $m_5$), as coded in rubin_sim's `signaltonoise.calc_m5` and used by syseng's `makeM5`.*
 
@@ -1580,21 +1585,21 @@ B_PART1_CELLS = [
 
     | r-band $m_5$ | what it is | source |
     |---|---|---|
-    | **24.7** | the design ("fiducial") depth | Ivezić et al. 2019, Table 2; Monday's worksheet |
+    | **24.7** | the design ("fiducial") depth | Ivezić et al. 2019, Table 1 (SRD design specification, fiducial zenith); Monday's worksheet |
     | **≈ 24.48** | the as-built hardware (release 1.9) at the reference settings: 2 × 15 s, zenith, dark sky, FWHM$_\text{eff}$ 0.83″ | this notebook's `m5("r")`; syseng `makeM5` gives 24.479 |
     | **24.06** | the median r-band visit in the simulated ten-year survey | baseline v5.3.3 simulation (Notebook A); median seeing 1.03″, airmass 1.18, sky 21.0 mag/arcsec² |
     """),
     _c("code", r'''
-    M5_DESIGN_R = 24.7        # Ivezic et al. 2019, Table 2 (also the worksheet)
+    M5_DESIGN_R = 24.7        # Ivezic et al. 2019, Table 1 (SRD design specification, fiducial zenith; also the worksheet)
     M5_SIM_MEDIAN_R = 24.06   # median r-band visit, baseline v5.3.3 simulation (Notebook A)
 
-    print(f"design (Ivezic+2019 Table 2):             {M5_DESIGN_R:.2f}")
+    print(f"design (Ivezic+2019 Table 1, SRD spec):    {M5_DESIGN_R:.2f}")
     print(f"as-built hardware (this notebook, m5('r')): {m5('r'):.2f}")
     print(f"median simulated visit (baseline v5.3.3): {M5_SIM_MEDIAN_R:.2f}")
     '''),
     _c("md", r"""
-    **Account for each step.** From 24.7 to ≈ 24.48: the hardware and the formula are the same kind
-    of calculation in both, so which inputs must differ? From ≈ 24.48 to 24.06: call `m5("r", ...)`
+    **Account for each step.** From 24.7 to ≈ 24.48: what went into 24.7, and which of those inputs
+    differ from the as-built calculation? From ≈ 24.48 to 24.06: call `m5("r", ...)`
     with the simulation's median seeing, airmass and sky. How much of the drop does each one explain
     on its own? Is the depth at the median conditions the same thing as the median depth?
 
@@ -1632,8 +1637,9 @@ B_PART1_CELLS = [
     ### Your camera, with sliders
 
     Change the telescope and camera. The aperture is the *effective* diameter (Rubin: 6.423 m).
-    "Sky brighter by" makes the sky brighter than the dark sky by that many mag/arcsec². Seeing is
-    FWHM$_\text{eff}$ in arcsec (the fiducial value is 0.92″ in u down to 0.76″ in y). The plot
+    "Sky brighter by" makes the sky brighter than the dark sky by that many mag/arcsec². The seeing
+    slider is an *offset* from the band's fiducial FWHM$_\text{eff}$ (0.92″ in u down to 0.76″ in
+    y), so 0 reproduces the reference; +0.2 means 0.2″ worse than fiducial. The plot
     shows $m_5$ against open-shutter time for your camera and for the Rubin reference.
 
     If the sliders don't appear (e.g. in a PDF), call
@@ -1675,7 +1681,8 @@ B_PART1_CELLS = [
 
     _W = dict(continuous_update=False, style={"description_width": "initial"})
 
-    def _m5_widget(band, aperture_m, read_noise, fwhm_eff, sky_brighter, t_exp, n_exp):
+    def _m5_widget(band, aperture_m, read_noise, seeing_offset, sky_brighter, t_exp, n_exp):
+        fwhm_eff = FWHM_EFF_ZENITH[band] + seeing_offset     # offset from the band's fiducial
         show_m5(band, aperture_m, read_noise, fwhm_eff, sky_mag_dark(band) - sky_brighter,
                 t_exp, n_exp)                               # don't echo the returned m5
 
@@ -1685,8 +1692,8 @@ B_PART1_CELLS = [
                                    description="aperture (m)", **_W),
             read_noise=FloatSlider(value=8.8, min=0.0, max=30.0, step=0.2,
                                    description="read noise (e⁻)", **_W),
-            fwhm_eff=FloatSlider(value=0.83, min=0.3, max=2.5, step=0.01,
-                                 description="seeing (″)", **_W),
+            seeing_offset=FloatSlider(value=0.0, min=-0.4, max=1.6, step=0.01,
+                                      description="seeing relative to fiducial (″)", **_W),
             sky_brighter=FloatSlider(value=0.0, min=0.0, max=5.0, step=0.1,
                                      description="sky brighter by (mag)", **_W),
             t_exp=IntSlider(value=15, min=1, max=300, step=1,
