@@ -1,7 +1,7 @@
 """Shared pytest fixtures for the notebook tests (controller ruling R2).
 
-``run_notebook_checks(check_code)`` builds week2/A_survey_strategy.ipynb from
-tools/build_notebooks.py, appends ``check_code`` as a final cell, executes the
+``run_notebook_checks(check_code, notebook="A")`` builds week2/A_survey_strategy.ipynb
+(or week2/B_camera_to_science.ipynb for notebook="B") from tools/build_notebooks.py, appends ``check_code`` as a final cell, executes the
 notebook headless with nbclient (cwd week2/, kernel "phys367", 600 s per cell),
 and returns the JSON dict printed on the line that starts with ``CHECKS``.
 The kernel runs with PHYS367_HEADLESS=1, so the notebook's ``sliders()`` helper builds
@@ -20,10 +20,11 @@ WEEK2 = REPO / "week2"
 KERNEL = "phys367"
 
 
-def _execute_with_check(check_code: str) -> dict:
+def _execute_with_check(check_code: str, notebook: str = "A") -> dict:
     from tools import build_notebooks
 
-    nb_path = build_notebooks.build()
+    builders = {"A": build_notebooks.build, "B": build_notebooks.build_b}
+    nb_path = builders[notebook]()
     nb = nbformat.read(nb_path, as_version=4)
     nb.cells.append(nbformat.v4.new_code_cell(check_code))
     client = NotebookClient(nb, timeout=600, kernel_name=KERNEL,
@@ -42,5 +43,5 @@ def _execute_with_check(check_code: str) -> dict:
 
 @pytest.fixture(scope="session")
 def run_notebook_checks():
-    """Factory: run_notebook_checks(check_code) -> dict."""
+    """Factory: run_notebook_checks(check_code, notebook="A"|"B") -> dict."""
     return _execute_with_check

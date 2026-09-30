@@ -1,8 +1,8 @@
 """Build the Week 2 notebooks from readable cell lists.
 
 The notebook source lives here as ordered lists of ("md" | "code", text) cells.
-Run ``python tools/build_notebooks.py`` to (re)write week2/A_survey_strategy.ipynb
-with outputs cleared. The notebook itself must not import anything from tools/.
+Run ``python tools/build_notebooks.py`` to (re)write week2/A_survey_strategy.ipynb and
+week2/B_camera_to_science.ipynb with outputs cleared. The notebook itself must not import anything from tools/.
 """
 from pathlib import Path
 import textwrap
@@ -11,6 +11,7 @@ import nbformat
 
 REPO = Path(__file__).resolve().parents[1]
 NB_A = REPO / "week2" / "A_survey_strategy.ipynb"
+NB_B = REPO / "week2" / "B_camera_to_science.ipynb"
 
 
 def _c(kind, text):
@@ -1226,9 +1227,543 @@ PART4_CELLS = [
 ]
 
 
-def build_notebook_a():
+# ===========================================================================
+# Notebook B: Week 2B · Camera and telescope → science
+# ===========================================================================
+# Cell text is written as raw strings (r"""...""" for markdown, r'''...''' for code, so code
+# cells can hold """docstrings"""), so LaTeX backslashes need no doubling here.
+
+# ---------------------------------------------------------------------------
+# Notebook B intro and setup
+# ---------------------------------------------------------------------------
+B_INTRO_CELLS = [
+    _c("md", r"""
+    # Week 2B · Camera and telescope → science
+
+    Monday's (Sep 28) "Design your own survey" worksheet handed you a single-visit depth,
+    r ≈ 24.7, as a given. In Notebook A the simulated survey's median r-band visit reached only
+    24.06. This notebook builds that depth from the hardware up: mirrors, lenses, filters, detector,
+    atmosphere, and the night sky. It then follows the camera through to science: seeing and weak
+    lensing, and the layout of the focal plane. It goes with Aaron Roodman's lecture on Wednesday
+    (Sep 30), and it compares with the first on-sky numbers from Phil Marshall's Sep 23 overview.
+
+    **How to use it.** In Colab, choose *Runtime → Run all*, then move the sliders. Every slider
+    wraps a plain function you can call directly. Use the direct call for your hand-in figure,
+    because sliders don't show up in PDFs.
+
+    **Core path vs. go deeper.** The core path takes about 30–45 minutes. The *Go deeper* boxes are
+    optional.
+
+    *Data note: the throughput curves are the Rubin project's engineering model of the as-built
+    hardware (public, from GitHub), and the survey numbers are from public simulations. None of this
+    is measured Rubin data.*
+    """),
+    _c("code", r'''
+    # Setup. Everything here ships with Colab.
+    import os
+    from pathlib import Path
+    import urllib.request
+
+    import numpy as np
+    import pandas as pd
+    import matplotlib.pyplot as plt
+
+    DATA_URL = "https://raw.githubusercontent.com/rhw/phys367/main/week2/data/"
+    DATA_DIR = Path("data")
+    DATA_FILES = {
+        "throughputs": "throughputs.csv",
+        "darksky": "darksky.csv",
+        "m5_reference": "m5_reference.csv",
+    }
+
+    def _fetch(name):
+        """Local path of a data file; downloads it from GitHub once if it isn't in data/."""
+        fname = DATA_FILES.get(name, name)
+        path = DATA_DIR / fname
+        if not path.exists():
+            DATA_DIR.mkdir(exist_ok=True)
+            print(f"downloading {fname} ...")
+            part = path.with_suffix(path.suffix + ".part")   # don't trust a half-finished download
+            urllib.request.urlretrieve(DATA_URL + fname, part)
+            part.rename(path)
+        return path
+
+    def load(name):
+        """Load a data file by short name ('throughputs', 'darksky', 'm5_reference') or file name.
+
+        Uses the local data/ directory if the file is there; otherwise downloads it from
+        GitHub once and caches it in data/. Lines starting with '#' are the file's provenance
+        header; read them with header(name).
+        """
+        path = _fetch(name)
+        if path.suffix == ".parquet":
+            return pd.read_parquet(path)
+        return pd.read_csv(path, comment="#")
+
+    def header(name):
+        """The provenance header (the '#' lines) of a data file, as one string."""
+        with open(_fetch(name)) as f:
+            return "".join(line for line in f if line.startswith("#"))
+
+    from ipywidgets import interact, interact_manual
+
+    def sliders(func, **controls):
+        """Attach sliders and menus to func, like ipywidgets.interact.
+
+        Automated runs with no screen (our tests set PHYS367_HEADLESS=1) build the same widgets
+        but don't run func, because live widget output can stall a headless run.
+        """
+        if os.environ.get("PHYS367_HEADLESS") == "1":
+            return interact_manual(func, **controls)
+        return interact(func, **controls)
+
+    BANDS = list("ugrizy")
+    BAND_COLORS = {"u": "tab:purple", "g": "tab:blue", "r": "tab:green",
+                   "i": "tab:orange", "z": "tab:red", "y": "tab:brown"}
+    '''),
+]
+
+# ---------------------------------------------------------------------------
+# Notebook B, Part 1: depth from first principles
+# ---------------------------------------------------------------------------
+B_PART1_CELLS = [
+    _c("md", r"""
+    ## Part 1 · Depth from first principles
+
+    The 5σ limiting magnitude $m_5$ is the brightness of a point source that a single visit detects
+    at signal-to-noise 5. It depends on how many photons from the source reach the detector, how
+    many sky photons land in the same patch of pixels, and how much noise the camera adds. You will
+    build it in four steps: throughput, source photons, sky photons, and signal-to-noise.
+
+    ### 1. The throughput chain
+
+    The fraction of photons at wavelength $\lambda$ that survive to become photoelectrons is a
+    product of components:
+
+    $$S_b(\lambda) = \underbrace{M_1 M_2 M_3}_{\text{mirrors}}\;\underbrace{L_1 L_2 L_3}_{\text{lenses}}
+    \;\underbrace{\text{QE}}_{\text{detector}}\;\underbrace{F_b}_{\text{filter}},
+    \qquad T_b(\lambda, X) = S_b(\lambda)\,A(\lambda, X)$$
+
+    where $S_b$ is the *hardware* throughput in band $b$ and $A(\lambda, X)$ is the atmosphere's
+    transmission at airmass $X$.
+
+    *Source: the Rubin systems-engineering throughput model, `lsst-pst/syseng_throughputs` at commit
+    `00570b3d39` (release 1.9, with silver coatings on all three mirrors). We rebuilt its
+    component products on a 1 nm grid (`tools/make_throughputs_extract.py` in the course repo);
+    they match syseng's own `buildHardwareAndSystem` output to about 1 part in 10⁶. Each component
+    includes syseng's loss terms (contamination, condensation), and the detector is the minimum of
+    the two CCD vendors' QE curves.* The atmosphere is tabulated at X = 1.0 and X = 1.2 (both
+    MODTRAN models for Cerro Pachón, from syseng). For other airmasses we interpolate
+    $\ln A$ linearly in $X$ between the two curves. That interpolation is our choice, not syseng's.
+
+    **Where does this break?** Every factor here is a single curve for the whole focal plane and
+    the whole survey. Which of them would you expect to change across the field of view, from night
+    to night, or over ten years?
+    """),
+    _c("code", r'''
+    SYSENG_SHA = "00570b3d391b5a8671d55341ed51b5e534dab6b4"   # syseng_throughputs, release 1.9
+
+    thr = load("throughputs")
+    dark_sed = load("darksky")
+    m5_ref = load("m5_reference").set_index("band")
+    print(header("throughputs"))
+
+    WAVE = thr["wavelength_nm"].to_numpy(dtype=float)   # nm, 1 nm grid, 300-1100 nm
+    DLAM = 1.0                                           # nm
+
+    def hardware(band):
+        """Hardware throughput S_b (mirrors x lenses x detector x filter), no atmosphere."""
+        return (thr["mirrors"] * thr["lenses"] * thr["detector"] * thr[f"filter_{band}"]).to_numpy()
+
+    def atmosphere(airmass=1.0):
+        """Atmospheric transmission at this airmass.
+
+        Exact at X = 1.0 and 1.2 (the two tabulated curves); elsewhere ln(A) is interpolated
+        (or extrapolated) linearly in X between them.
+        """
+        if airmass < 1.0:
+            raise ValueError("airmass must be >= 1 (1 = zenith)")
+        a10 = thr["atmos_X1.0"].to_numpy()
+        a12 = thr["atmos_X1.2"].to_numpy()
+        ratio = np.divide(a12, a10, out=np.zeros_like(a10), where=a10 > 0)
+        return np.clip(a10 * ratio ** ((airmass - 1.0) / 0.2), 0.0, 1.0)
+
+    def system(band, airmass=1.0):
+        """Total throughput T_b = hardware x atmosphere, on the WAVE grid."""
+        return hardware(band) * atmosphere(airmass)
+    '''),
+    _c("code", r'''
+    def show_components(airmass=1.0):
+        """Plot every component of the throughput chain, then the total system curve per band."""
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 7), sharex=True)
+        keep = WAVE >= 320        # below ~320 nm nothing gets through (and the lens file has an edge artifact)
+        w = WAVE[keep]
+        for col, label, style in [("mirrors", "mirrors M1·M2·M3", "-"),
+                                  ("lenses", "lenses L1·L2·L3", "--"),
+                                  ("detector", "detector QE", "-.")]:
+            ax1.plot(w, thr[col].to_numpy()[keep], "k", ls=style, lw=1.2, label=label)
+        ax1.plot(w, atmosphere(airmass)[keep], color="0.6", lw=1.5, label=f"atmosphere, X = {airmass:g}")
+        for b in BANDS:
+            ax1.plot(w, thr[f"filter_{b}"].to_numpy()[keep], color=BAND_COLORS[b], lw=1, alpha=0.7)
+        ax1.set_ylabel("throughput")
+        ax1.set_ylim(0, 1.05)
+        ax1.legend(loc="lower right", fontsize=8)
+        ax1.set_title("Components (colored: the six filters)")
+        for b in BANDS:
+            ax2.plot(w, system(b, airmass)[keep], color=BAND_COLORS[b], label=b)
+            ax2.plot(w, hardware(b)[keep], color=BAND_COLORS[b], lw=0.7, ls=":")
+        ax2.set_ylabel("total throughput")
+        ax2.set_xlabel("wavelength (nm)")
+        ax2.set_title(f"System = product of all of the above (dotted: hardware only), X = {airmass:g}")
+        ax2.legend(ncol=6, fontsize=8, loc="upper right")
+        ax2.set_ylim(0, 0.7)
+        plt.tight_layout()
+        plt.show()
+
+    show_components()
+    '''),
+    _c("md", r"""
+    **Read the plot.** Which component limits the u band? Which one sets the red edge of y? Where
+    does the atmosphere matter most?
+
+    ### 2. Photons from a source: the zeropoint
+
+    An AB magnitude is defined against a flat spectrum, $f_\nu = 3631$ Jy at $m = 0$. The rate of
+    detected photons (photoelectrons) from such a source is
+
+    $$N_0 = A_\text{eff}\int \frac{f_\nu\,T_b(\lambda)}{h\lambda}\,d\lambda ,
+    \qquad N(m) = N_0\,10^{-0.4\,m}\ \ \text{per second}$$
+
+    where $A_\text{eff}$ is the effective collecting area. Divide $f_\nu$ by the photon energy
+    $h\nu$ to count photons, and use $d\nu/\nu = d\lambda/\lambda$ to integrate in wavelength.
+    $2.5\log_{10}N_0$ is the magnitude that gives one photoelectron per second.
+
+    *Source: AB system (Oke & Gunn 1983); the same sum as rubin_sim's `Sed.calc_adu`, which
+    syseng uses. The collecting area is rubin_sim's default, $A_\text{eff} = \pi(6.423\ \text{m}/2)^2$
+    = 32.4 m². Rubin's primary mirror is 8.4 m across; the central obscuration makes the effective aperture
+    smaller (Ivezić et al. 2019 quote 6.5 m effective).*
+
+    **Where does this break?** Real stars and galaxies don't have flat $f_\nu$. What happens to
+    the photon count for a very red or very blue source with the same AB magnitude?
+    """),
+    _c("code", r'''
+    H_ERG_S = 6.626068e-27           # Planck constant, erg s (rubin_sim's value)
+    C_NM_S = 2.99792458e17           # speed of light, nm/s
+    AB_ZERO_FNU = 3631e-23           # erg s^-1 cm^-2 Hz^-1 (3631 Jy)
+    RUBIN_AREA_M2 = np.pi * (6.423 / 2) ** 2   # rubin_sim PhotometricParameters default
+
+    def zeropoint(band, airmass=1.0, area_m2=None, throughput=None):
+        """Photoelectrons per second from an m = 0 AB source (flat f_nu = 3631 Jy).
+
+        Uses the full system throughput (hardware x atmosphere) unless you pass `throughput`.
+        """
+        area_cm2 = (RUBIN_AREA_M2 if area_m2 is None else area_m2) * 1e4
+        T = system(band, airmass) if throughput is None else throughput
+        return area_cm2 * np.sum(AB_ZERO_FNU * T / (H_ERG_S * WAVE)) * DLAM
+
+    print("Zeropoint: magnitude giving 1 photoelectron/s (X = 1.0)")
+    print(f"{'band':>4} {'this notebook':>14} {'syseng makeM5':>14}")
+    for b in BANDS:
+        print(f"{b:>4} {2.5 * np.log10(zeropoint(b)):14.3f} {m5_ref.loc[b, 'Zp_t']:14.3f}")
+    '''),
+    _c("md", r"""
+    ### 3. Photons from the sky
+
+    The night sky is not dark. Airglow, zodiacal light and scattered light give a surface
+    brightness $F_\lambda^\text{sky}$ per arcsec². The rate of sky photoelectrons per arcsec² is
+
+    $$B = A_\text{eff}\int F_\lambda^\text{sky}\,\frac{\lambda}{hc}\,S_b(\lambda)\,d\lambda$$
+
+    through the **hardware only**: the sky glow is made in the atmosphere, and syseng's dark-sky
+    spectrum already describes the light arriving at the telescope.
+
+    *Source: `siteProperties/darksky.dat` in syseng (same commit), a dark, moonless sky at zenith.
+    The file's header gives units of erg s⁻¹ cm⁻² nm⁻¹ only. We treat it as per arcsec² because
+    that is how syseng's `makeM5` uses it (it multiplies by the pixel area in arcsec²).* To try a
+    brighter sky, `sky_counts(band, sky_mag=...)` rescales the same spectrum to the surface brightness
+    you give it, in mag/arcsec².
+
+    **Where does this break?** This is one dark sky at zenith. What does the Moon do, and would it
+    matter equally in every band? What about twilight, or looking toward the Galactic plane or the
+    ecliptic?
+    """),
+    _c("code", r'''
+    def sky_counts(band, sky_mag=None, area_m2=None):
+        """Sky photoelectrons per second per arcsec^2, through the hardware (no atmosphere).
+
+        sky_mag=None uses the dark-sky spectrum as is; otherwise the same spectrum is rescaled
+        to that surface brightness (AB mag/arcsec^2 through the hardware).
+        """
+        area_cm2 = (RUBIN_AREA_M2 if area_m2 is None else area_m2) * 1e4
+        flam = dark_sed["flambda_erg_s_cm2_nm"].to_numpy()
+        dark = area_cm2 * np.sum(flam * WAVE / (H_ERG_S * C_NM_S) * hardware(band)) * DLAM
+        if sky_mag is None:
+            return dark
+        return dark * 10 ** (-0.4 * (sky_mag - sky_mag_dark(band)))
+
+    def sky_mag_dark(band):
+        """Surface brightness of the dark-sky spectrum in this band (AB mag/arcsec^2)."""
+        return -2.5 * np.log10(sky_counts(band) / zeropoint(band, throughput=hardware(band)))
+
+    print("Dark-sky surface brightness at zenith (mag/arcsec^2)")
+    print(f"{'band':>4} {'this notebook':>14} {'syseng makeM5':>14} {'sky e-/s/pixel':>15}")
+    for b in BANDS:
+        print(f"{b:>4} {sky_mag_dark(b):14.3f} {m5_ref.loc[b, 'skyMag']:14.3f} "
+              f"{sky_counts(b) * 0.2**2:15.1f}")
+    '''),
+    _c("md", r"""
+    ### 4. Signal-to-noise and $m_5$
+
+    A visit is $n_\text{exp}$ exposures of $t_\text{exp}$ seconds each, so the total open-shutter time is
+    $t = n_\text{exp}t_\text{exp}$. For a point source giving $C$ photoelectrons, spread over a PSF
+    that covers $n_\text{eff}$ pixels,
+
+    $$\frac{S}{N} = \frac{C}{\sqrt{C + n_\text{eff}\,\big(B\,p^2\,t + n_\text{exp}\,\sigma_\text{read}^2 + D\,t\big)}},
+    \qquad n_\text{eff} = 2.266\left(\frac{\text{FWHM}_\text{eff}}{p}\right)^2$$
+
+    Here $p$ is the pixel scale, $\sigma_\text{read}$ the read noise per pixel per exposure, and
+    $D$ the dark current. Set $S/N = 5$ and solve the quadratic for $C$. Then
+    $m_5 = -2.5\log_{10}\!\big[C/(N_0\,t)\big]$.
+
+    *Source: the LSST signal-to-noise document LSE-40 (eq. 27 for $n_\text{eff}$, eq. 45 for
+    $m_5$), as coded in rubin_sim's `signaltonoise.calc_m5` and used by syseng's `makeM5`.*
+
+    | parameter | value | source |
+    |---|---|---|
+    | effective area | π(6.423 m / 2)² = 32.4 m² | rubin_sim 2.6.2 `phot_utils/photometric_parameters.py`, `DefaultPhotometricParameters` |
+    | pixel scale $p$ | 0.2″ | same file |
+    | read noise | 8.8 e⁻ per pixel per exposure | same file (from the camera spec, LSE-30) |
+    | dark current | 0.2 e⁻/s per pixel | same file |
+    | gain | 1 (we count electrons) | syseng `makeM5` sets gain = 1; rubin_sim's default is 2.3 e⁻/ADU, which cancels when you work in electrons |
+    | FWHM$_\text{eff}$ | u 0.92, g 0.87, r 0.83, i 0.80, z 0.78, y 0.76″ at zenith, × $X^{0.6}$ | syseng `m5Utils.fwhm_eff_zenith` (fiducial seeing from the LSST overview paper, Ivezić et al. 2019) |
+    | visit | 2 × 15 s in every band | the reference convention used here; syseng's `makeM5` default is 1 × 30 s in u |
+
+    The reference table `m5_reference.csv` was made by running syseng's own `makeM5` at the pinned
+    commit with exactly these settings at X = 1.0 (see its header). Your function should agree with it.
+
+    **Where does this break?** The formula assumes a faint point source on a smooth, perfectly
+    subtracted sky, with a Gaussian-like PSF. Name a kind of source, or a part of the sky, where
+    each of those assumptions fails. What would happen to $m_5$?
+    """),
+    _c("code", r'''
+    PIXEL_SCALE = 0.2                       # arcsec per pixel (rubin_sim default)
+    FWHM_EFF_ZENITH = {"u": 0.92, "g": 0.87, "r": 0.83, "i": 0.80, "z": 0.78, "y": 0.76}  # arcsec, syseng
+
+    def m5(band, t_exp=15, n_exp=2, fwhm_eff=None, sky_mag=None, read_noise=8.8, dark=0.2,
+           area_m2=None, airmass=1.0):
+        """5-sigma point-source depth (AB mag) of one visit of n_exp exposures of t_exp seconds.
+
+        fwhm_eff=None uses syseng's fiducial zenith FWHM_eff x airmass^0.6 (arcsec).
+        sky_mag=None uses the dark-sky spectrum; otherwise the sky in mag/arcsec^2.
+        read_noise in e-/pixel/exposure; dark in e-/pixel/s; area_m2=None means Rubin's 32.4 m^2.
+        """
+        if fwhm_eff is None:
+            fwhm_eff = FWHM_EFF_ZENITH[band] * airmass ** 0.6
+        t = t_exp * n_exp                                        # open-shutter seconds
+        n_eff = 2.266 * (fwhm_eff / PIXEL_SCALE) ** 2            # pixels in the PSF (LSE-40 eq. 27)
+        sky_per_pixel = sky_counts(band, sky_mag, area_m2) * PIXEL_SCALE**2 * t
+        var_bkg = n_eff * (sky_per_pixel + n_exp * read_noise**2 + dark * t)
+        snr = 5.0
+        counts_5sig = snr**2 / 2 + np.sqrt(snr**4 / 4 + snr**2 * var_bkg)   # solves S/N = 5 for C
+        return -2.5 * np.log10(counts_5sig / (zeropoint(band, airmass, area_m2) * t))
+
+    print("Single-visit m5, 2 x 15 s, X = 1.0, dark sky, fiducial seeing")
+    print(f"{'band':>4} {'this notebook':>14} {'syseng makeM5':>14} {'difference':>11}")
+    for b in BANDS:
+        mine, ref = m5(b), m5_ref.loc[b, "m5"]
+        print(f"{b:>4} {mine:14.3f} {ref:14.3f} {mine - ref:+11.4f}")
+    '''),
+    _c("md", r"""
+    ### Design → as-built → as-scheduled
+
+    Three numbers for the same thing, the depth of one r-band visit:
+
+    | r-band $m_5$ | what it is | source |
+    |---|---|---|
+    | **24.7** | the design ("fiducial") depth | Ivezić et al. 2019, Table 2; Monday's worksheet |
+    | **≈ 24.48** | the as-built hardware (release 1.9) at the reference settings: 2 × 15 s, zenith, dark sky, FWHM$_\text{eff}$ 0.83″ | this notebook's `m5("r")`; syseng `makeM5` gives 24.479 |
+    | **24.06** | the median r-band visit in the simulated ten-year survey | baseline v5.3.3 simulation (Notebook A); median seeing 1.03″, airmass 1.18, sky 21.0 mag/arcsec² |
+    """),
+    _c("code", r'''
+    M5_DESIGN_R = 24.7        # Ivezic et al. 2019, Table 2 (also the worksheet)
+    M5_SIM_MEDIAN_R = 24.06   # median r-band visit, baseline v5.3.3 simulation (Notebook A)
+
+    print(f"design (Ivezic+2019 Table 2):             {M5_DESIGN_R:.2f}")
+    print(f"as-built hardware (this notebook, m5('r')): {m5('r'):.2f}")
+    print(f"median simulated visit (baseline v5.3.3): {M5_SIM_MEDIAN_R:.2f}")
+    '''),
+    _c("md", r"""
+    **Account for each step.** From 24.7 to ≈ 24.48: the hardware and the formula are the same kind
+    of calculation in both, so which inputs must differ? From ≈ 24.48 to 24.06: call `m5("r", ...)`
+    with the simulation's median seeing, airmass and sky. How much of the drop does each one explain
+    on its own? Is the depth at the median conditions the same thing as the median depth?
+
+    **Your science.** Your plan in Notebook A used 24.7. Which of your numbers change if you use
+    24.06 instead, and by how much?
+    """),
+    _c("md", r"""
+    ### Read noise, and why the u band is different
+
+    The reference visit is two 15 s exposures. syseng's own `makeM5` defaults to a single 30 s
+    exposure in u, and two 15 s exposures in the other bands. The cell below computes, with your
+    `m5()`, how much deeper one 30 s exposure is than two 15 s exposures in each band. Next to it:
+    the sky electrons per pixel in one 15 s exposure, and syseng's `dCm_double` from the reference table: the depth that a visit of twice the
+    exposure time still loses to camera noise, compared with a noiseless camera.
+    """),
+    _c("code", r'''
+    RN = 8.8   # e- per pixel per exposure
+    print(f"{'band':>4} {'sky e-/pix/15s':>15} {'read noise^2':>13} "
+          f"{'m5(1x30s) - m5(2x15s)':>22} {'dCm_double (syseng)':>20}")
+    for b in BANDS:
+        sky_pix = sky_counts(b) * PIXEL_SCALE**2 * 15
+        gain_30 = m5(b, t_exp=30, n_exp=1) - m5(b, t_exp=15, n_exp=2)
+        print(f"{b:>4} {sky_pix:15.1f} {RN**2:13.1f} {gain_30:22.3f} "
+              f"{m5_ref.loc[b, 'dCm_double']:20.3f}")
+    '''),
+    _c("md", r"""
+    **Why u?** Why does the u band gain the most from one 30 s exposure, and lose the most to read
+    noise? Compare the first two columns. What would you change about the camera, or the visit, to
+    fix it, and what would each fix cost?
+
+    **Where does this break?** Two exposures per visit let you reject cosmic rays and catch
+    fast-moving objects. What do you give up with one 30 s exposure?
+    """),
+    _c("md", r"""
+    ### Your camera, with sliders
+
+    Change the telescope and camera. The aperture is the *effective* diameter (Rubin: 6.423 m).
+    "Sky brighter by" makes the sky brighter than the dark sky by that many mag/arcsec². Seeing is
+    FWHM$_\text{eff}$ in arcsec (the fiducial value is 0.92″ in u down to 0.76″ in y). The plot
+    shows $m_5$ against open-shutter time for your camera and for the Rubin reference.
+
+    If the sliders don't appear (e.g. in a PDF), call
+    `show_m5(band, aperture_m=..., read_noise=..., fwhm_eff=..., sky_mag=..., t_exp=..., n_exp=...)`
+    directly; that's also what to use for your hand-in figure.
+    """),
+    _c("code", r'''
+    def show_m5(band="r", aperture_m=6.423, read_noise=8.8, fwhm_eff=None, sky_mag=None,
+                t_exp=15, n_exp=2, airmass=1.0):
+        """Print m5 for one visit with these settings and plot m5 vs exposure time. Returns m5."""
+        area = np.pi * (aperture_m / 2) ** 2
+        mine = m5(band, t_exp, n_exp, fwhm_eff, sky_mag, read_noise, 0.2, area, airmass)
+        ref = m5(band)
+        fwhm_used = FWHM_EFF_ZENITH[band] * airmass ** 0.6 if fwhm_eff is None else fwhm_eff
+        sky_used = sky_mag_dark(band) if sky_mag is None else sky_mag
+        print(f"{band} band: {n_exp} x {t_exp:g} s, aperture {aperture_m:.2f} m, read noise "
+              f"{read_noise:.1f} e-, FWHM_eff {fwhm_used:.2f}\", sky {sky_used:.2f} mag/arcsec^2, "
+              f"X = {airmass:.2f}")
+        print(f"  m5 = {mine:.2f}   (Rubin reference, 2 x 15 s: {ref:.2f}; "
+              f"difference {mine - ref:+.2f} mag)")
+
+        t_grid = np.geomspace(1, 300, 60)                   # exposure time per exposure, s
+        fig, ax = plt.subplots(figsize=(6, 3.5))
+        ax.plot(t_grid * n_exp, [m5(band, t, n_exp, fwhm_eff, sky_mag, read_noise, 0.2, area, airmass)
+                                 for t in t_grid], color=BAND_COLORS[band], label="your camera")
+        ax.plot(t_grid * 2, [m5(band, t, 2) for t in t_grid], "k--", lw=1,
+                label="Rubin reference (2 exposures)")
+        ax.scatter([t_exp * n_exp], [mine], color=BAND_COLORS[band], zorder=3)
+        ax.scatter([30], [ref], color="k", zorder=3)
+        ax.set_xscale("log")
+        ax.set_xlabel("open-shutter time per visit (s)")
+        ax.set_ylabel(f"{band}-band $m_5$ (AB mag)")
+        ax.legend(fontsize=8)
+        plt.show()
+        return mine
+    '''),
+    _c("code", r'''
+    from ipywidgets import Dropdown, FloatSlider, IntSlider
+
+    _W = dict(continuous_update=False, style={"description_width": "initial"})
+
+    def _m5_widget(band, aperture_m, read_noise, fwhm_eff, sky_brighter, t_exp, n_exp):
+        show_m5(band, aperture_m, read_noise, fwhm_eff, sky_mag_dark(band) - sky_brighter,
+                t_exp, n_exp)                               # don't echo the returned m5
+
+    sliders(_m5_widget,
+            band=Dropdown(options=BANDS, value="r", description="band"),
+            aperture_m=FloatSlider(value=6.423, min=0.5, max=12.0, step=0.1,
+                                   description="aperture (m)", **_W),
+            read_noise=FloatSlider(value=8.8, min=0.0, max=30.0, step=0.2,
+                                   description="read noise (e⁻)", **_W),
+            fwhm_eff=FloatSlider(value=0.83, min=0.3, max=2.5, step=0.01,
+                                 description="seeing (″)", **_W),
+            sky_brighter=FloatSlider(value=0.0, min=0.0, max=5.0, step=0.1,
+                                     description="sky brighter by (mag)", **_W),
+            t_exp=IntSlider(value=15, min=1, max=300, step=1,
+                            description="t_exp (s)", **_W),
+            n_exp=IntSlider(value=2, min=1, max=10, step=1,
+                            description="n_exp", **_W));
+    '''),
+    _c("md", r"""
+    **Where are you limited?** For each band, find the exposure time at which read noise stops
+    mattering. Does it depend on the sky brightness? On the seeing?
+
+    **Buy one thing.** You can afford one upgrade: 10% more aperture, half the read noise, or
+    0.1″ better seeing. Which buys the most depth in r? In u? Is it the same answer?
+    """),
+    _c("md", r"""
+    ### Étendue: aperture × field of view
+
+    Depth per visit depends on the aperture. How much sky you can cover depends on the field of view.
+    A survey telescope is rated by their product, the **étendue** $A_\text{eff}\,\Omega$.
+    Here is a toy argument for why.
+
+    1. If every visit is limited by sky noise, $m_5$ depends on $A_\text{eff}\,t$. So reaching the
+       same depth takes $t \propto 1/A_\text{eff}$.
+    2. Covering the same area takes $\propto 1/\Omega$ pointings.
+    3. So the worksheet's ten-year budget, Area × visits × $(t/30\,\text{s}) \approx 1.5\times10^7$
+       (Monday's worksheet, Notebook A), scales as $A_\text{eff}\,\Omega$ when every visit has
+       Rubin's 30 s depth.
+
+    *Sources: Rubin's field of view is 9.6 deg² (Ivezić et al. 2019); the effective area is rubin_sim's
+    default, as above. This is a toy model.*
+
+    **Where does this break?** The argument assumes every visit is sky-noise limited, the overhead
+    per visit is negligible, and the telescope has the same number of good nights. Which of these
+    fails first for a much smaller telescope? For a much smaller field?
+    """),
+    _c("code", r'''
+    BUDGET = 1.5e7               # area x visits x (t/30 s) over 10 yr, Monday's worksheet
+    RUBIN_DIAM_EFF_M = 6.423     # effective aperture, m (rubin_sim default area)
+    RUBIN_FOV_DEG2 = 9.6         # field of view, deg^2 (Ivezic et al. 2019)
+
+    def survey_budget(diam_eff_m, fov_deg2):
+        """Toy: the worksheet's 10-yr budget, scaled by etendue relative to Rubin."""
+        etendue = np.pi * (diam_eff_m / 2) ** 2 * fov_deg2
+        etendue_rubin = np.pi * (RUBIN_DIAM_EFF_M / 2) ** 2 * RUBIN_FOV_DEG2
+        return BUDGET * etendue / etendue_rubin
+
+    print("Toy: ten-year budget at Rubin's 30 s single-visit depth, scaled by etendue")
+    print(f"{'telescope':<28} {'etendue (m^2 deg^2)':>20} {'budget':>9} "
+          f"{'visits/field @18k deg^2':>24} {'r m5, 2x15 s':>13}")
+    for label, d, fov in [("Rubin (6.423 m, 9.6 deg^2)", RUBIN_DIAM_EFF_M, RUBIN_FOV_DEG2),
+                          ("4 m aperture, 9.6 deg^2", 4.0, RUBIN_FOV_DEG2),
+                          ("6.423 m, 1 deg^2 field", RUBIN_DIAM_EFF_M, 1.0)]:
+        et = np.pi * (d / 2) ** 2 * fov
+        b = survey_budget(d, fov)
+        print(f"{label:<28} {et:20.0f} {b:9.2e} {b / 18000:24.0f} "
+              f"{m5('r', area_m2=np.pi * (d / 2) ** 2):13.2f}")
+    '''),
+    _c("md", r"""
+    **What would it do to the survey?** Take your team's plan from Notebook A. With a 4 m telescope,
+    or with a 1 deg² field, would you rather keep the area and lose visits, or keep the visits and
+    lose area? Which science case suffers most from each?
+
+    > **Go deeper.** The atmosphere here interpolates between two tabulated curves. The textbook
+    > alternative is Beer–Lambert: $A(\lambda, X) = A(\lambda, 1)^X$. Compute
+    > `thr["atmos_X1.0"]**1.2` and compare it with `thr["atmos_X1.2"]`. Where do they differ, and why
+    > might a single exponent not describe every part of the atmosphere?
+    """),
+]
+
+B_PART2_CELLS = []   # Part 2: seeing -> weak lensing (Task 3)
+B_PART3_CELLS = []   # Part 3: the focal plane (Task 4)
+B_PART4_CELLS = []   # Part 4: go deeper and the hand-in (Task 4)
+
+
+def _make_notebook(cells_src):
     cells = []
-    for index, (kind, text) in enumerate(PART1_CELLS + PART2_CELLS + PART3_CELLS + PART4_CELLS):
+    for index, (kind, text) in enumerate(cells_src):
         if kind == "md":
             cell = nbformat.v4.new_markdown_cell(text)
         else:
@@ -1242,13 +1777,31 @@ def build_notebook_a():
     return nb
 
 
+def build_notebook_a():
+    return _make_notebook(PART1_CELLS + PART2_CELLS + PART3_CELLS + PART4_CELLS)
+
+
+def build_notebook_b():
+    return _make_notebook(B_INTRO_CELLS + B_PART1_CELLS + B_PART2_CELLS + B_PART3_CELLS
+                          + B_PART4_CELLS)
+
+
 def build(path=NB_A):
-    """Write the notebook (outputs cleared) and return its path."""
+    """Write Notebook A (outputs cleared) and return its path."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     nbformat.write(build_notebook_a(), path)
     return path
 
 
+def build_b(path=NB_B):
+    """Write Notebook B (outputs cleared) and return its path."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    nbformat.write(build_notebook_b(), path)
+    return path
+
+
 if __name__ == "__main__":
     print(build())
+    print(build_b())
