@@ -2027,8 +2027,418 @@ B_PART2_CELLS = [
     """),
 ]
 
-B_PART3_CELLS = []   # Part 3: the focal plane (Task 4)
-B_PART4_CELLS = []   # Part 4: go deeper and the hand-in (Task 4)
+# ---------------------------------------------------------------------------
+# Notebook B, Part 3: the focal plane
+# ---------------------------------------------------------------------------
+B_PART3_CELLS = [
+    _c("md", r"""
+    ## Part 3 · The focal plane
+
+    So far every visit has been one number: one depth, one seeing. On the sky a visit is a
+    picture taken by 189 separate CCDs, and between the CCDs there is no data. This part draws the
+    focal plane, measures how much of it is silicon, and shows what the gaps do to a survey.
+
+    **The layout.** The LSST Camera has 189 science CCDs, each 4k × 4k with 10 µm pixels, grouped
+    into 21 "rafts" of 3 × 3 CCDs. Each raft has its own electronics. The four corners of the
+    5 × 5 grid hold special rafts with guide sensors (which track the stars during an exposure)
+    and wavefront sensors (split, half-size CCDs held just above and below focus, used to keep the
+    optics aligned). Together that is 3.2 gigapixels over a 9.6 deg² field of view, with
+    0.2″ pixels. *Source: Ivezić et al. 2019, §2.6.2, Fig. 12 and Table 1; LSST Science Book
+    2009, §2.4.*
+
+    **The numbers we draw with.** To place the CCDs we use the camera description in the Rubin
+    software, `lsst/obs_lsst` (commit `4cf6266c5d`, files `policy/rafts.yaml`,
+    `policy/cameraHeader.yaml` and `policy/lsstCam/R*.yaml`):
+
+    | quantity | value | source |
+    |---|---|---|
+    | raft spacing (center to center) | 127.0 mm | obs_lsst `rafts.yaml` |
+    | CCD spacing within a raft | 42.25 mm | obs_lsst `cameraHeader.yaml` |
+    | imaging pixels, e2v CCDs (13 rafts) | 4096 × 4004 | obs_lsst `cameraHeader.yaml` |
+    | imaging pixels, ITL CCDs (8 rafts) | 4072 × 4000 | obs_lsst `cameraHeader.yaml` |
+    | pixel size | 10 µm | obs_lsst; Ivezić et al. 2019 |
+    | plate scale | 20.006″ per mm, so 0.200″ per pixel | obs_lsst `cameraTransforms.yaml` |
+
+    Two vendors, Teledyne e2v and ITL (University of Arizona), built the CCDs, and their imaging
+    areas differ slightly (40.96 × 40.04 mm vs. 40.72 × 40.00 mm). Subtracting from the spacings,
+    the gaps between the imaging areas of neighboring CCDs in a raft are 1.29 mm and 2.21 mm
+    (e2v, in x and y) or 1.53 mm and 2.25 mm (ITL). Between rafts they are 0.25 mm wider. At
+    0.2″ per 10 µm pixel, 1 mm is 20″. These gaps are *our arithmetic* on the nominal layout;
+    they include the dead silicon at each CCD's edge, not just the air between packages.
+
+    **What we approximate.** This is the nominal layout: every CCD sits exactly on its grid
+    position, square to the axes. (The obs_lsst file itself notes that its e2v positions were
+    copied from the ITL ones and not checked against drawings or the sky.) We ignore the optical
+    distortion, which moves a star at the outer corners by about 0.4 mm (from obs_lsst's radial
+    distortion coefficients). The corner
+    sensors are drawn at their obs_lsst slots, without their small (≤ 5 mm) offsets. Ivezić et al.
+    2019 Table 1 gives a slightly different plate scale, 50.9 µm per arcsec, or 0.196″ per pixel.
+    """),
+    _c("code", r'''
+    # LSSTCam geometry: nominal layout from lsst/obs_lsst (commit 4cf6266c5d), in mm on the focal plane.
+    PLATE_SCALE = 20.005867576692737   # arcsec per mm (obs_lsst cameraTransforms.yaml)
+    PIXEL_MM = 0.010                   # 10 um pixels
+    RAFT_PITCH_MM = 127.0              # raft center to raft center (obs_lsst rafts.yaml)
+    CCD_PITCH_MM = 42.25               # CCD center to CCD center within a raft (cameraHeader.yaml)
+    CCD_PIXELS = {"E2V": (4096, 4004), "ITL": (4072, 4000)}   # imaging pixels (x, y), per vendor
+    ITL_RAFTS = {"R01", "R02", "R03", "R10", "R20", "R41", "R42", "R43"}   # other science rafts: e2v
+    CORNER_RAFTS = {"R00": 180, "R04": 270, "R40": 90, "R44": 0}          # corner raft: rotation (deg)
+    MM_PER_DEG = 3600 / PLATE_SCALE    # focal-plane mm per degree on the sky (~180 mm)
+    FILL_FACTOR_PUBLISHED = 0.908      # Veres & Chesley 2017, AJ 154, 12, section 2.2
+
+    def science_ccds():
+        """One row per science CCD: raft, sensor, vendor, center (x, y) and imaging size, in mm.
+
+        Rafts are named R<row><column> and sensors S<row><column>, counting from the
+        bottom left (-x, -y), as in obs_lsst.
+        """
+        rows = []
+        for row in range(5):
+            for col in range(5):
+                raft = f"R{row}{col}"
+                if raft in CORNER_RAFTS:
+                    continue
+                vendor = "ITL" if raft in ITL_RAFTS else "E2V"
+                nx, ny = CCD_PIXELS[vendor]
+                for srow in range(3):
+                    for scol in range(3):
+                        rows.append(dict(
+                            raft=raft, sensor=f"S{srow}{scol}", vendor=vendor,
+                            x=RAFT_PITCH_MM * (col - 2) + CCD_PITCH_MM * (scol - 1),
+                            y=RAFT_PITCH_MM * (row - 2) + CCD_PITCH_MM * (srow - 1),
+                            width=nx * PIXEL_MM, height=ny * PIXEL_MM))
+        return pd.DataFrame(rows)
+
+    def corner_sensors():
+        """Guide (SG0, SG1) and wavefront (SW0, SW1: half-size) sensors in the four corner rafts.
+
+        Slot positions from obs_lsst cameraHeader.yaml, rotated with each corner raft;
+        the few-mm per-sensor offsets are ignored.
+        """
+        rows = []
+        slots = [("SG0", "guider", -CCD_PITCH_MM, 0.0, 40.72, 40.00),
+                 ("SG1", "guider", 0.0, -CCD_PITCH_MM, 40.00, 40.72),
+                 ("SW0", "wavefront", -CCD_PITCH_MM, -52.8125, 40.72, 20.00),
+                 ("SW1", "wavefront", -CCD_PITCH_MM, -31.6875, 40.72, 20.00)]
+        for raft, yaw in CORNER_RAFTS.items():
+            cx, cy = RAFT_PITCH_MM * (int(raft[2]) - 2), RAFT_PITCH_MM * (int(raft[1]) - 2)
+            c, s = np.cos(np.radians(yaw)), np.sin(np.radians(yaw))
+            for sensor, kind, dx, dy, w, h in slots:
+                if yaw in (90, 270):
+                    w, h = h, w
+                rows.append(dict(raft=raft, sensor=sensor, kind=kind, x=cx + c * dx - s * dy,
+                                 y=cy + s * dx + c * dy, width=w, height=h))
+        return pd.DataFrame(rows)
+
+    def on_chip(x, y):
+        """True where focal-plane position (x, y) in mm lands on the imaging area of a science CCD."""
+        x, y = np.asarray(x, dtype=float), np.asarray(y, dtype=float)
+        col, row = np.rint(x / RAFT_PITCH_MM), np.rint(y / RAFT_PITCH_MM)     # raft index, -2..2
+        ok = (np.abs(col) <= 2) & (np.abs(row) <= 2) & ~((np.abs(col) == 2) & (np.abs(row) == 2))
+        u, v = x - RAFT_PITCH_MM * col, y - RAFT_PITCH_MM * row               # position in the raft
+        scol, srow = np.rint(u / CCD_PITCH_MM), np.rint(v / CCD_PITCH_MM)     # CCD index, -1..1
+        ok &= (np.abs(scol) <= 1) & (np.abs(srow) <= 1)
+        itl = np.zeros(x.shape, dtype=bool)
+        for raft in ITL_RAFTS:
+            itl |= (row == int(raft[1]) - 2) & (col == int(raft[2]) - 2)
+        half_x = np.where(itl, CCD_PIXELS["ITL"][0], CCD_PIXELS["E2V"][0]) * PIXEL_MM / 2
+        half_y = np.where(itl, CCD_PIXELS["ITL"][1], CCD_PIXELS["E2V"][1]) * PIXEL_MM / 2
+        return ok & (np.abs(u - CCD_PITCH_MM * scol) < half_x) & (np.abs(v - CCD_PITCH_MM * srow) < half_y)
+
+    def fill_factor():
+        """Imaging area of the 189 science CCDs / area of the 21 raft cells (127 mm x 127 mm each)."""
+        ccds = science_ccds()
+        return float((ccds["width"] * ccds["height"]).sum() / (21 * RAFT_PITCH_MM ** 2))
+
+    def active_area_deg2():
+        """Total imaging area of the science CCDs on the sky, deg^2."""
+        ccds = science_ccds()
+        return float((ccds["width"] * ccds["height"]).sum() / MM_PER_DEG ** 2)
+
+    ccds = science_ccds()
+    print(f"{len(ccds)} science CCDs in {ccds['raft'].nunique()} rafts:",
+          ccds["vendor"].value_counts().to_dict())
+    print(f"pixels: {(ccds['width'] * ccds['height']).sum() / PIXEL_MM**2 / 1e9:.2f} billion, "
+          f"{PIXEL_MM * PLATE_SCALE:.3f} arcsec each")
+    print(f"imaging area on the sky: {active_area_deg2():.2f} deg^2")
+    print(f"fill factor (this geometry): {fill_factor():.3f}   published: {FILL_FACTOR_PUBLISHED}")
+    '''),
+    _c("code", r'''
+    from matplotlib.patches import Rectangle, Circle
+
+    def draw_focal_plane(zoom=True, circle=True):
+        """Draw the focal plane on the sky (degrees), with a zoom on the center of raft R22."""
+        ncol = 2 if zoom else 1
+        fig, axes = plt.subplots(1, ncol, figsize=(6 * ncol, 6.8))
+        axes = np.atleast_1d(axes)
+        colors = {"E2V": "tab:blue", "ITL": "tab:green", "guider": "tab:orange", "wavefront": "tab:red"}
+        for ax in axes:
+            for _, c in science_ccds().iterrows():
+                ax.add_patch(Rectangle(((c.x - c.width / 2) / MM_PER_DEG, (c.y - c.height / 2) / MM_PER_DEG),
+                                       c.width / MM_PER_DEG, c.height / MM_PER_DEG,
+                                       color=colors[c.vendor], alpha=0.5, lw=0))
+            for _, c in corner_sensors().iterrows():
+                ax.add_patch(Rectangle(((c.x - c.width / 2) / MM_PER_DEG, (c.y - c.height / 2) / MM_PER_DEG),
+                                       c.width / MM_PER_DEG, c.height / MM_PER_DEG,
+                                       color=colors[c.kind], alpha=0.6, lw=0))
+            for row in range(5):                          # raft outlines
+                for col in range(5):
+                    if f"R{row}{col}" in CORNER_RAFTS:
+                        continue
+                    x0 = (RAFT_PITCH_MM * (col - 2) - RAFT_PITCH_MM / 2) / MM_PER_DEG
+                    y0 = (RAFT_PITCH_MM * (row - 2) - RAFT_PITCH_MM / 2) / MM_PER_DEG
+                    ax.add_patch(Rectangle((x0, y0), RAFT_PITCH_MM / MM_PER_DEG, RAFT_PITCH_MM / MM_PER_DEG,
+                                           fill=False, ec="k", lw=0.6))
+            if circle:
+                ax.add_patch(Circle((0, 0), 1.75, fill=False, ec="k", ls="--", lw=1.2))
+            ax.set_aspect("equal")
+            ax.set_xlabel("x on the sky (deg)")
+            ax.set_ylabel("y on the sky (deg)")
+        ax = axes[0]
+        ax.set_xlim(-2.1, 2.1)
+        ax.set_ylim(-2.1, 2.1)
+        handles = [Rectangle((0, 0), 1, 1, color=colors[k], alpha=0.5) for k in colors]
+        labels = ["e2v science CCD", "ITL science CCD", "guide sensor", "wavefront sensor"]
+        if circle:
+            handles.append(Circle((0, 0), 1, fill=False, ec="k", ls="--"))
+            labels.append("Notebook A's 1.75° circle")
+        ax.legend(handles, labels, fontsize=8, loc="upper center", ncol=3, bbox_to_anchor=(0.5, -0.1))
+        ax.set_title("LSSTCam focal plane (nominal obs_lsst layout)")
+        if zoom:
+            axes[1].set_xlim(-0.2, 0.2)
+            axes[1].set_ylim(-0.2, 0.2)
+            axes[1].set_title("zoom: center of raft R22 (gaps are real)")
+        plt.tight_layout()
+        plt.show()
+
+    draw_focal_plane()
+    '''),
+    _c("md", r"""
+    ### Fill factor
+
+    The *fill factor* is the fraction of the focal plane covered by pixels. From the drawing above
+    we compute it as the imaging area of the 189 science CCDs divided by the area of the 21 raft
+    cells (127 mm on a side):
+
+    $$f_\text{fill} = \frac{\sum_\text{CCDs} (\text{imaging width} \times \text{height})}{21 \times (127\ \text{mm})^2}$$
+
+    This gives ≈ 0.913 (from our geometry). The published values:
+
+    - **90.8%**: "The current LSST camera design expects a 90.8% fill factor."
+      *Vereš & Chesley 2017, AJ 154, 12, §2.2* (their near-Earth-object simulations).
+    - **93%**: "gaps of less than a few hundred µm. The resulting 'fill factor,' i.e., the fraction
+      of the focal plane covered by pixels, is 93%." *LSST Science Book 2009, §2.4.2.*
+    - **> 90%**, "including non-imaging silicon area and inter-chip gaps." *O'Connor et al. 2019,
+      JATIS 5, 041508, §1.*
+
+    **Where does this break?** The answer depends on the denominator. What is "the focal plane":
+    the 21 raft cells, the 9.6 deg² circle, or the square that encloses the science rafts? The
+    Science Book's gaps are "less than a few hundred µm," but ours are 1.3–2.3 mm. Which gap is
+    each number about, and which one matters for your science?
+    """),
+    _c("md", r"""
+    ### What Notebook A's circle hid
+
+    In Notebook A every visit was a circle of radius 1.75° (9.62 deg²), and the chip gaps were
+    ignored. The drawing shows the dashed circle on the real layout. The next cell measures on a
+    fine grid how much of that circle is actually on silicon, and how much silicon sticks out past
+    it (the corners of the outer rafts).
+    """),
+    _c("code", r'''
+    def circle_vs_silicon(radius_deg=1.75, step_deg=0.004):
+        """Compare the 1.75-deg circle of Notebook A with the real CCD layout, on a fine grid.
+
+        Returns the fraction of the circle that lands on a science CCD, and the fraction of all
+        science-CCD area that lies outside the circle.
+        """
+        g = np.arange(-2.2, 2.2, step_deg) + step_deg / 2
+        X, Y = np.meshgrid(g, g)
+        on = on_chip(X * MM_PER_DEG, Y * MM_PER_DEG)
+        inside = X**2 + Y**2 < radius_deg**2
+        return {"circle_on_silicon": float(on[inside].mean()),
+                "silicon_outside_circle": float(on[~inside].sum() / on.sum())}
+
+    cvs = circle_vs_silicon()
+    print(f"circle of 1.75 deg: {np.pi * 1.75**2:.2f} deg^2; science CCDs: {active_area_deg2():.2f} deg^2")
+    print(f"fraction of the circle on silicon:      {cvs['circle_on_silicon']:.3f}")
+    print(f"fraction of the silicon outside circle: {cvs['silicon_outside_circle']:.3f}")
+    '''),
+    _c("md", r"""
+    **Same area, different shape.** The circle and the silicon cover almost the same area, so
+    Notebook A's visit counts are right *on average*. What does the circle get wrong for a single
+    object near the edge of a field, or for a transient that falls in a gap?
+
+    ### Dithering
+
+    If the telescope pointed at exactly the same spot, with the camera at the same angle, on every
+    visit, the same stars would land in the same gaps every time. They would never be observed. The
+    fix is to *dither*: shift the pointing (and rotate the camera) a little from visit to visit, so
+    the gaps move around on the sky.
+
+    The next cell takes N visits of one field. *Without dithering*, every visit has the same
+    pointing and the same rotation. *With dithering*, each visit is offset in a random direction by
+    up to `dither_deg` (uniform over a disk), and, if `rotate=True`, turned by a random angle between
+    −90° and +90°. The default, 0.7°, is about one raft width (0.71°). These choices are ours, not
+    the survey's. The maps count visits on a grid of 0.006° (22″) pixels, finer than the narrowest
+    gap (1.29 mm = 26″). The histograms use only the central 1° × 1° box (the white square). Even
+    with the largest dither on the slider, that box always stays inside the outline of the science
+    rafts, so every zero in it is a gap, not the edge of the field. The random numbers are seeded,
+    so a given `seed` always gives the same answer.
+
+    If the slider doesn't appear, call `show_dithering(n_visits, dither_deg, rotate, seed)`
+    directly.
+    """),
+    _c("code", r'''
+    def visit_counts(n_visits=20, dither_deg=0.7, rotate=True, seed=367, half_deg=2.4, step_deg=0.006):
+        """Number of visits that put each sky pixel on a science CCD.
+
+        Returns (counts, grid): counts is a 2D array over the square |x|, |y| < half_deg (deg),
+        grid the pixel centers along each axis. dither_deg = 0 and rotate = False: no dithering.
+        """
+        rng = np.random.default_rng(seed)
+        grid = np.arange(-half_deg, half_deg, step_deg) + step_deg / 2
+        X, Y = np.meshgrid(grid, grid)
+        counts = np.zeros(X.shape, dtype=int)
+        for _ in range(n_visits):
+            r = dither_deg * np.sqrt(rng.uniform())            # uniform over a disk of radius dither_deg
+            phi = rng.uniform(0, 2 * np.pi)
+            theta = np.radians(rng.uniform(-90, 90)) if rotate else 0.0
+            dx, dy = X - r * np.cos(phi), Y - r * np.sin(phi)  # sky offset from this visit's pointing
+            c, s = np.cos(theta), np.sin(theta)
+            counts += on_chip((c * dx + s * dy) * MM_PER_DEG, (-s * dx + c * dy) * MM_PER_DEG)
+        return counts, grid
+
+    BOX_DEG = 0.5    # half-width of the central box used for the histograms
+
+    def _box_stats(counts, grid):
+        box = np.abs(grid) < BOX_DEG
+        sub = counts[np.ix_(box, box)]
+        return {"frac_zero": float(np.mean(sub == 0)), "mean": float(sub.mean()),
+                "std": float(sub.std()), "min": int(sub.min()), "max": int(sub.max())}
+
+    def show_dithering(n_visits=20, dither_deg=0.7, rotate=True, seed=367):
+        """Maps of visit counts without and with dithering, and their histograms in the central box.
+
+        Returns {"undithered": stats, "dithered": stats}; stats are the fraction of pixels never
+        observed, and the mean, standard deviation, min and max of the visit count in the box.
+        """
+        runs = {"undithered": visit_counts(n_visits, 0.0, False, seed),
+                "dithered": visit_counts(n_visits, dither_deg, rotate, seed)}
+        stats = {k: _box_stats(*v) for k, v in runs.items()}
+        fig, axes = plt.subplots(1, 3, figsize=(15, 4.6))
+        bins = np.arange(-0.5, n_visits + 1.5)
+        for ax, (name, (counts, grid)) in zip(axes, runs.items()):
+            ext = [grid[0], grid[-1], grid[0], grid[-1]]
+            im = ax.imshow(counts, origin="lower", extent=ext, cmap="viridis", vmin=0, vmax=n_visits,
+                           interpolation="nearest")
+            ax.add_patch(Rectangle((-BOX_DEG, -BOX_DEG), 2 * BOX_DEG, 2 * BOX_DEG, fill=False, ec="w", lw=1.2))
+            title = "no dithering" if name == "undithered" else (
+                f"dithered: up to {dither_deg}°" + (", rotated" if rotate else ""))
+            ax.set_title(f"{title}\n{n_visits} visits; {stats[name]['frac_zero']:.1%} of box never seen")
+            ax.set_xlabel("x (deg)")
+            ax.set_ylabel("y (deg)")
+            plt.colorbar(im, ax=ax, label="visits", shrink=0.85)
+            box = np.abs(grid) < BOX_DEG
+            axes[2].hist(counts[np.ix_(box, box)].ravel(), bins=bins, histtype="step", lw=1.5,
+                         density=True, label=title)
+        axes[2].set_xlabel("visits per pixel (central box)")
+        axes[2].set_ylabel("fraction of pixels")
+        axes[2].set_yscale("log")
+        axes[2].legend(fontsize=8, loc="upper left")
+        plt.tight_layout()
+        plt.show()
+        for name, s in stats.items():
+            print(f"{name:11}: never seen {s['frac_zero']:6.1%}   visits mean {s['mean']:5.2f}  "
+                  f"std {s['std']:5.2f}  min {s['min']}  max {s['max']}")
+        return stats
+
+    _ = show_dithering(20)
+    '''),
+    _c("code", r'''
+    from ipywidgets import Checkbox, FloatSlider, IntSlider
+
+    def _dither_widget(n_visits, dither_deg, rotate):
+        show_dithering(n_visits, dither_deg, rotate)       # don't echo the returned stats
+
+    sliders(_dither_widget,
+            n_visits=IntSlider(value=20, min=1, max=50, step=1, description="visits", **_W),
+            dither_deg=FloatSlider(value=0.7, min=0.0, max=0.75, step=0.05,
+                                   description="dither radius (deg)", **_W),
+            rotate=Checkbox(value=True, description="rotate the camera"));
+    '''),
+    _c("md", r"""
+    **Depth uniformity.** With the default dithering, essentially no pixel in the box is missed, but the pixels no longer
+    all get the same number of visits. Monday's worksheet says a coadd of N visits gains
+    1.25 log₁₀ N in depth. Use the histogram: how much does the coadded depth vary across the box,
+    with and without dithering? Which is worse for your science, a few pixels that are never
+    observed or every pixel a little different?
+
+    **The selection function.** The *selection function* is the probability that an object at a
+    given position (and brightness) makes it into your catalog. With dithering, what does it look
+    like on the sky, and on what angular scales does it vary? Why would a weak-lensing or
+    galaxy-clustering measurement care about a pattern with the spacing of the CCDs or the rafts?
+
+    **Where does this break?** This is one field, alone. The real survey tiles the sky with
+    overlapping fields, so the edges of one field are covered by its neighbors. How would the
+    overlaps change the histogram? The survey also chooses *when* to dither (per visit or per
+    night) and how far. Try `dither_deg=0.1` or `rotate=False`. What survives?
+
+    > **Go deeper.** The `camera_footprint_demo` notebook in rubin_sim_notebooks
+    > (<https://github.com/lsst/rubin_sim_notebooks/blob/main/utils/camera_footprint_demo.ipynb>)
+    > uses rubin_sim's own map of which sky positions land on silicon, built from the same
+    > obs_lsst camera model. How big an error do the chip gaps make in the number of visits a
+    > survey simulation reports for a single star?
+    """),
+]
+
+# ---------------------------------------------------------------------------
+# Notebook B, Part 4: go deeper and the hand-in
+# ---------------------------------------------------------------------------
+B_PART4_CELLS = [
+    _c("md", r"""
+    ## Part 4 · Go deeper (optional)
+
+    - **The throughput model itself.** The notebooks in `lsst-pst/syseng_throughputs`
+      (<https://github.com/lsst-pst/syseng_throughputs/tree/main/notebooks>) show how the curves
+      in Part 1 are built. `SilverVsAluminum.ipynb` compares mirror coatings: release 1.9, the
+      one used here, moved the mirrors from Al-Ag-Al (aluminum, silver, aluminum) to silver on all
+      three (*syseng_throughputs README*). Which bands gained depth and which lost it?
+    - **Measured seeing and depth.** On the Rubin Science Platform (once your accounts are live),
+      the DP1 Visit table tutorial, `201_10_Visit_table.ipynb`
+      (<https://github.com/lsst/tutorial-notebooks/tree/main/DP1/200_Data_Products/201_Catalogs>),
+      gives the measured seeing and depth of the LSSTComCam commissioning visits in DP1. How do they
+      compare with your `m5()`? (LSSTComCam is a smaller commissioning camera, so the field of
+      view is different from LSSTCam's.)
+    - **The camera, from the people who built it.** Aaron Roodman's DESC Dark Energy School talk
+      "The LSST Camera: design drivers and expected performance" (DE School XIII, SLAC, July 2023)
+      is linked, with slides and video, from <https://lsstdesc.org/pages/DESchool.html>.
+    - **The footprint in rubin_sim.** `camera_footprint_demo.ipynb`
+      (<https://github.com/lsst/rubin_sim_notebooks/blob/main/utils/camera_footprint_demo.ipynb>)
+      shows which points on the sky fall on silicon for a given pointing and rotation.
+    - **Simulating images.** GalSim (<https://github.com/GalSim-developers/GalSim>; Rowe et al.
+      2015) is a widely used package for simulating astronomical images of galaxies and stars. Draw a
+      galaxy, convolve it with a 0.7″ and a 1.1″ PSF, and add sky noise: does the Part 2 toy
+      model's resolution cut look right?
+    """),
+    _c("md", r"""
+    ## Hand-in
+
+    Due Monday Oct 5 on Canvas. Turn in: (1) one figure you made (use a direct function call, not
+    a slider); (2) one paragraph: what does your team's science case need from the camera and
+    telescope, and does the as-built system give it?; (3) a sentence on any AI tools you used.
+    Upload the .ipynb or a PDF. Graded complete/incomplete.
+
+    Make your figure in the code cell below. Write your paragraph and the AI-tools sentence in the
+    last cell.
+    """),
+    _c("code", r'''
+    # Your hand-in figure (use a direct function call, not a slider), e.g.
+    # _ = show_dithering(n_visits=30, dither_deg=0.3, rotate=False)
+    '''),
+    _c("md", r"""
+    *Your paragraph here.*
+    """),
+]
 
 
 def _make_notebook(cells_src):

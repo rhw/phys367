@@ -11,7 +11,8 @@ For course details and lecture materials, visit: [Physics 367 Course Page](https
 **2A · Survey strategy → science** (due Mon Oct 5)
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/rhw/phys367/blob/main/week2/A_survey_strategy.ipynb)
 
-2B · Camera → science: coming Wednesday Sep 30.
+**2B · Camera → science** (due Mon Oct 5)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/rhw/phys367/blob/main/week2/B_camera_to_science.ipynb)
 
 ### Run Locally
 
