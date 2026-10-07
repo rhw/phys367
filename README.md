@@ -14,6 +14,20 @@ For course details and lecture materials, visit: [Physics 367 Course Page](https
 **2B · Camera → science** (due Mon Oct 5)
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/rhw/phys367/blob/main/week2/B_camera_to_science.ipynb)
 
+---
+
+## Week 3: From Images to Catalogs
+
+Week 3 runs on the **Rubin Science Platform** (<https://data.lsst.cloud>, LSST kernel), not Colab: the notebooks use the Butler, the TAP service, and catalog extracts stored on the RSP. In an RSP terminal, `git clone https://github.com/rhw/phys367.git` (or `git pull` if you already have it) and open the notebooks under `week3/`.
+
+Tutorials from Wednesday's hands-on (Alex Broughton and Eli Rykoff):
+
+- [`qualify_a_dataset.ipynb`](week3/qualify_a_dataset.ipynb) · Is this catalog any good? Survey property maps, a coadd with its catalog and masks, counts and depth.
+- [`dp2_full_sky_stars_phys367.ipynb`](week3/dp2_full_sky_stars_phys367.ipynb) · Bright stars over the DP2 footprint, star/galaxy separation, sky maps.
+- [`dp2_cosmos_phys367.ipynb`](week3/dp2_cosmos_phys367.ipynb) · The COSMOS deep field: stellar locus, galaxy colors, PSF size residuals.
+
+**3 · Hand-in** (due Mon Oct 12): [`handin.ipynb`](week3/handin.ipynb). Pick one of four exercises (calibration, selection, deblending, depth), make its figure, write the paragraph.
+
 ### Run Locally
 
 To run the notebooks on your own computer:
@@ -29,7 +43,7 @@ To run the notebooks on your own computer:
    pip install numpy pandas pyarrow matplotlib astropy ipywidgets jupyter
    ```
 
-3. **Open a notebook** (Notebook A or Notebook B):
+3. **Open a notebook** (Week 2 Notebook A or B; the Week 3 notebooks need the RSP):
    ```bash
    jupyter notebook week2/A_survey_strategy.ipynb
    jupyter notebook week2/B_camera_to_science.ipynb
