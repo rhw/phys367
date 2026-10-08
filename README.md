@@ -14,6 +14,9 @@ For course details and lecture materials, visit: [Physics 367 Course Page](https
 **2B · Camera → science** (due Mon Oct 5)
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/rhw/phys367/blob/main/week2/B_camera_to_science.ipynb)
 
+**Week 2 debrief** · what the class found, and where the reasoning slipped (posted after the hand-in)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/rhw/phys367/blob/main/week2/debrief.ipynb)
+
 ---
 
 ## Week 3: From Images to Catalogs
