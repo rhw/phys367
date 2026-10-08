@@ -23,8 +23,8 @@ INTRO_CELLS = [
     _c("md", """
     # Week 2 · Debrief: what the class found
 
-    Sixteen of you turned in Notebooks A and B, and every notebook ran through to the hand-in
-    with no errors. About half of you went past the template and built something of your own.
+    Every notebook students turned in ran through to the hand-in with no errors, and about
+    half of you went past the template and built something of your own.
     This notebook reruns the most instructive of those additions, with the code, so everyone
     can see them, and then goes through the places where the reasoning slipped. Nothing here is
     attributed; where it says "one of you", that is all it says.
