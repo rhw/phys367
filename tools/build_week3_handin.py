@@ -553,8 +553,8 @@ HANDIN_CELLS = [
 
     Do the measurement and the plot in your exercise's cell. Then paste the lines that draw
     the figure into the code cell below, so the figure sits next to the paragraph. Before you
-    upload, choose *Run All*, save, and download the .ipynb (File → Download); a PDF export
-    is also fine if the figure shows.
+    upload, choose *Run All*, save, and download the .ipynb (File → Download). Submit the
+    notebook itself, not a PDF.
 
     **One exercise is the assignment.** The *Go further* box in each exercise, or a second
     exercise, is optional and does not change the grade. If you do one, add it in new cells
