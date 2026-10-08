@@ -24,16 +24,16 @@ INTRO_CELLS = [
     # Week 2 · Debrief: what the class found
 
     Every notebook students turned in ran through to the hand-in with no errors, and about
-    half of you went past the template and built something of your own.
-    This notebook reruns the most instructive of those additions, with the code, so everyone
-    can see them, and then goes through the places where the reasoning slipped. Nothing here is
-    attributed; where it says "one of you", that is all it says.
+    half of you went past the template and built something of your own. This notebook reruns
+    the most useful of those additions, with the code, so everyone can see them. It then goes
+    through the places where the reasoning went wrong. Nothing here is attributed. Where it
+    says "one of you", that is all it says.
 
-    **How to use it.** *Runtime → Run all*. The first cell loads the functions and data of
-    Notebooks A and B (about 20 s). After that every section stands alone.
+    **How to use it.** *Runtime → Run all*. The first cell loads the functions and data from
+    Notebooks A and B (about 20 s). After that, each section stands on its own.
 
-    1. **What you found**: eight analyses, regenerated.
-    2. **Where the reasoning slipped**: the misconceptions, each with the two-line computation that settles it.
+    1. **What you found**: eight analyses, rerun.
+    2. **Where the reasoning went wrong**: the misconceptions, each with the short calculation that settles it.
     3. **The numbers** the class converged on.
     4. **What the class got right.**
     """),
@@ -80,15 +80,15 @@ PART1_CELLS = [
 
     ### 1. Where did the 0.6 mag go?
 
-    The design single-visit r-band depth is 24.7; the simulated median is 24.06. Several of
-    you asked which of seeing, airmass and sky explains the drop. Two approaches appeared: a
-    scatter of every main-survey visit's $m_5$ against each quantity, and a stepwise call of
-    `m5()` changing one input at a time. Here are both.
+    The design single-visit r-band depth is 24.7. The simulated median is 24.06. Several of
+    you asked which of seeing, airmass, and sky brightness explains the difference. Two
+    approaches showed up: a scatter plot of $m_5$ against each quantity for every main-survey
+    visit, and a stepwise call to `m5()` that changes one input at a time. Here are both.
 
-    **Why it matters.** Every requirement in Week 1 was set against the design depth. If the
-    real survey is 0.6 mag shallower, knowing *which* input causes it tells you whether the
-    loss is permanent (the site's seeing), seasonal (sky brightness), or something the
-    scheduler can trade against (airmass).
+    **Why this matters.** All of the requirements you wrote down in Week 1 assumed the design
+    depth. If the real survey is 0.6 mag shallower, you want to know which input is
+    responsible, because that tells you whether the loss is permanent (the site's seeing),
+    seasonal (the sky), or something the scheduler can trade against (airmass).
     """),
     _c("code", """
     r_visits = points[(points["band"] == "r") & (points["category"] == "main")]
@@ -118,17 +118,18 @@ PART1_CELLS = [
     print(table.round(3))
     """),
     _c("md", """
-    Seeing takes 0.23 mag, the sky 0.09, airmass 0.02; the stepwise total, 24.14, lands
-    within 0.08 of the simulation's 24.06. Four of you concluded "seeing dominates", three
-    with evidence like this.
+    Seeing costs 0.23 mag, the sky 0.09, and airmass 0.02. The stepwise total is 24.14,
+    within 0.08 of the simulation's 24.06. Four of you concluded that seeing dominates, three
+    of you with evidence like this.
 
-    **A cautionary tale from the same question.** One notebook reported that airmass alone
+    **A cautionary tale from the same question.** One notebook found that airmass alone
     explained 0.48 of the 0.6 mag. The code had `airmass=1.8` where the simulation median is
-    1.18. The three terms then summed to 24.06 almost exactly, which made the typo look
-    right. When one term comes out much larger than you expected, check the inputs before
-    building an explanation on it; the coincidence of the total was the misleading part.
-    (A subtlety: with `fwhm_eff=None`, `m5()` also widens the PSF by airmass$^{0.6}$, so to
-    separate the terms hold the delivered seeing fixed, as the stepwise table does.)
+    1.18. The three terms then added up to 24.06 almost exactly, which made the typo look
+    right. When one term comes out much larger than you expected, check the inputs before you
+    start explaining it. Here the fact that the total matched was what made it convincing,
+    and that was a coincidence. (One subtlety: with `fwhm_eff=None`, `m5()` also widens the
+    PSF by airmass$^{0.6}$. To separate the terms, hold the delivered seeing fixed, as the
+    stepwise table does.)
     """),
     _c("code", """
     for x in (1.18, 1.8):
@@ -137,11 +138,11 @@ PART1_CELLS = [
     print(f"airmass 1.8 with the PSF widened too (the hand-in's call):  {m5('r', airmass=1.8) - m5('r'):+.3f} mag")
     """),
     _c("md", """
-    ### 2. Seeing, priced in time
+    ### 2. Seeing, measured in time
 
-    Instead of asking how much depth a worse PSF costs at fixed exposure, one of you asked
-    how much *exposure* it costs at fixed depth. The answer is the more useful one for a survey
-    with a fixed number of hours.
+    Instead of asking how much depth a worse PSF costs at a fixed exposure time, one of you
+    asked how much exposure time it costs at a fixed depth. For a survey with a fixed number
+    of hours, that is the more useful question.
     """),
     _c("code", """
     times = np.geomspace(5, 300, 100)
@@ -157,18 +158,18 @@ PART1_CELLS = [
     ax.legend(); plt.show()
     """),
     _c("md", """
-    From 0.7″ to 1.3″ the time to reach the same depth triples.
+    From 0.7″ to 1.3″, the time it takes to reach the same depth triples.
 
-    **Takeaway.** Seeing is usually discussed as an image-quality number, but for a survey
-    with a fixed number of hours it is a budget number: every 0.1″ of extra PSF width is
-    time you do not get back. That is why the 0.9″ to 1.1″ of the first commissioning weeks
-    matters beyond the pictures.
+    **Why this matters.** We usually talk about seeing as an image-quality number. For a
+    survey with a fixed number of hours, it is also a budget number: every 0.1″ of extra PSF
+    width is time you do not get back. That is why the 0.9″ to 1.1″ seeing of the first
+    commissioning weeks matters for more than how the images look.
 
     ### 3. The 9 s of overhead per visit
 
-    The worksheet budget counts a 5 s visit as one sixth of a 30 s visit. Notebook A flagged
-    the readout, shutter and slew that every visit also costs; two of you put the 9 s into
-    the budget, one in code and one by hand.
+    The worksheet budget counts a 5 s visit as one sixth of a 30 s visit. Notebook A pointed
+    out that every visit also costs readout, shutter, and slew time. Two of you put the 9 s
+    into the budget, one in code and one by hand.
     """),
     _c("code", """
     area, t_visit, overhead = 18_000, 5, 9
@@ -177,16 +178,16 @@ PART1_CELLS = [
     print(f"30 s visits, 9 s overhead:{BUDGET / (area * (30 + overhead) / 30):.0f} visits per field (vs 833 without)")
     """),
     _c("md", """
-    **Takeaway.** Short visits look free in a budget that only counts open-shutter time, and
-    they are not: at 5 s the overhead cuts the visit count by a factor of 2.8. This is the
-    reason Rubin's visits are 30 s and not 5, and why the fast-cadence science cases had to
-    argue for time rather than assume it.
+    **Why this matters.** Short visits look free in a budget that only counts open-shutter
+    time. They are not. At 5 s, the overhead cuts the number of visits by a factor of 2.8.
+    This is a big part of why Rubin's visits are 30 s and not 5, and why the fast-cadence
+    science cases have to argue for their time rather than assume it.
 
     ### 4. What the storm costs
 
-    Phil Marshall quoted 7,267 visits taken out of 17,273 possible in the first two weeks.
-    Two of you reran the plan at 60% of the budget. One read the bar chart and wrote that u
-    and y were hit hardest. The other printed the table:
+    Phil Marshall told us the survey took 7,267 visits out of 17,273 possible in the first
+    two weeks. Two of you reran the plan at 60% of the budget. One read the bar chart and
+    wrote that u and y were hit hardest. The other printed the table:
     """),
     _c("code", """
     full = plan_survey(18_000, 30, DEFAULT_SPLIT)
@@ -200,20 +201,21 @@ PART1_CELLS = [
     print(f"SNe Ia detected: {full['n_sn_detected']:.2e} -> {reduced['n_sn_detected']:.2e}  (unchanged: the toy depends on single-visit depth and area only)")
     """),
     _c("md", """
-    With identical visits the loss is the same 0.28 mag in every band; the chart's y-range
-    made it look band-dependent. The second notebook also noted that a contiguous gap is
-    worse than a uniform 40% cut, because it removes whole seasons from some fields.
+    With identical visits, the loss is the same 0.28 mag in every band. The y-range of the
+    bar chart made it look band-dependent. The second notebook also pointed out that a
+    contiguous gap is worse than a uniform 40% cut, because it removes whole seasons from
+    some fields.
 
-    **Takeaway.** Lost time costs every band the same depth, so "which band suffers" is the
-    wrong question; "which science needs the visits that were lost" is the right one. The
-    lensing count drops 18% and the pair rate for asteroids 40%, while the supernova count
-    in this toy does not move, because it depends on single-visit depth, not on how many
-    visits there are.
+    **Why this matters.** Losing time costs every band the same depth, so the useful question
+    is not which band suffers but which science needs the visits that were lost. Here the
+    lensing galaxy count drops 18% and the asteroid pair rate drops 40%. The supernova count
+    in this toy model does not change at all, because it depends on single-visit depth and
+    not on the number of visits.
 
     ### 5. How much sky actually reaches r = 27?
 
-    The median ten-year r-band coadd is 26.94, so "r ≥ 27 over 18,000 deg²" is not what the
-    simulation delivers. One of you measured how much sky does reach it.
+    The median ten-year r-band coadd depth is 26.94, so "r ≥ 27 over 18,000 deg²" is not
+    what the simulation delivers. One of you measured how much sky does get there.
     """),
     _c("code", """
     r_maps = maps[maps["band"] == "r"]
@@ -222,14 +224,15 @@ PART1_CELLS = [
     print(f"{'':9s} main-survey median 10-yr r coadd: {main_survey_medians(maps).loc['r', 'm5_coadd']:.2f}")
     """),
     _c("md", """
-    **Takeaway.** A survey's depth is a distribution, not a number, and a requirement written
-    as a threshold ("r ≥ 27") is met over a very different area than the median suggests.
-    When your science case needs a depth, ask how many square degrees reach it, and when.
+    **Why this matters.** A survey's depth is a distribution, not a single number. A
+    requirement written as a threshold, like r ≥ 27, is met over a much smaller area than the
+    median suggests. When your science case needs a certain depth, ask how many square
+    degrees reach it, and when.
 
     ### 6. Kilonovae: one table for three questions
 
-    "Which preset catches the kilonova within 2 days? At 400 Mpc? Within 5 days?" One
-    notebook answered all three at once.
+    The notebook asked which preset catches the kilonova within 2 days, what happens at
+    400 Mpc, and what happens within 5 days. One of you answered all three in one table.
     """),
     _c("code", """
     catch = pd.concat({
@@ -240,23 +243,23 @@ PART1_CELLS = [
     catch.round(3)
     """),
     _c("md", """
-    The deep drilling fields catch about half, the main survey about a sixth, the south polar
-    cap almost none. Four of you drew the right conclusion: the deep fields win on *cadence*
-    (a median night gap of 1 day against 3), not depth, and since they cover a tiny fraction
-    of the sky, gravitational-wave alerts and target-of-opportunity time are what makes
-    kilonova science work. One notebook wrote that the deep fields rank highest "because the
-    observations are extremely deep"; see Part 2.
+    The deep drilling fields catch about half, the main survey about a sixth, and the south
+    polar cap almost none. Four of you drew the right conclusion: the deep fields win because
+    of cadence (a median gap between nights of 1 day instead of 3), not depth. And because
+    they cover such a small fraction of the sky, kilonova science needs gravitational-wave
+    alerts and target-of-opportunity time. One notebook wrote that the deep fields rank
+    highest "because the observations are extremely deep"; see Part 2.
 
-    **Takeaway.** For anything that fades in days, the question is not "how deep" but "how
-    often", and the answer is set by where the scheduler points, not by the telescope. That
-    is why the fast-transient science cases depend on alerts and target-of-opportunity time
-    as much as on Rubin itself.
+    **Why this matters.** For anything that fades in days, the question is not how deep but
+    how often. The answer is set by where the scheduler points, not by the telescope. That is
+    why the fast-transient science cases depend on alerts and target-of-opportunity time as
+    much as they depend on Rubin itself.
 
     ### 7. Time delays: season gaps or noise?
 
-    One of you ran the lensed-quasar estimator once with and once without noise, got 28 and
+    One of you ran the lensed-quasar estimator once with noise and once without, got 28 and
     30 days, and concluded the season gaps were the limit. Another ran six noise seeds and a
-    gap-free regular cadence:
+    regular cadence with no gaps:
     """),
     _c("code", """
     print("RXJ1131, no noise:     ", estimate_delay(lensed_quasar("RXJ1131-1231", noise=False)))
@@ -266,19 +269,19 @@ PART1_CELLS = [
     print("every 3 d, no gaps, noise:   ", estimate_delay(lensed_quasar(mjd=regular, noise=True)))
     """),
     _c("md", """
-    The gapped, noise-free case recovers the true 30 days exactly; it is the noise that moves
+    The gapped, noise-free case recovers the true 30 days exactly. It is the noise that moves
     the estimate. One run with each setting cannot tell you that.
 
-    **Takeaway.** Whenever a result depends on a random realization, one run is an anecdote.
-    Changing the seed a few times costs seconds and is the difference between naming the
-    right limiting factor and the wrong one. The same habit applies to real data: a
-    conclusion from one patch of sky needs a second patch.
+    **Why this matters.** Whenever a result depends on a random realization, one run tells
+    you very little. Changing the seed a few times takes seconds, and here it is the
+    difference between naming the right limiting factor and the wrong one. The same applies to
+    real data: a conclusion from one patch of sky needs a second patch.
 
     ### 8. When does the camera saturate?
 
     Everything in Notebook B was about the faint end. One of you turned it around and asked
     at what magnitude the central pixel of a star fills the well, using the notebook's
-    zeropoints, dark-sky brightness and PSF widths. The code below is theirs, lightly tidied.
+    zeropoints, dark-sky brightness, and PSF widths. The code below is theirs, lightly tidied.
     """),
     _c("code", """
     band = "r"
@@ -305,32 +308,32 @@ PART1_CELLS = [
     _c("md", """
     Stars brighter than about r = 16 saturate in a 30 s visit, close to what Rubin quotes.
 
-    **Takeaway.** A survey has a bright limit as well as a faint one. Saturated stars are not
-    lost, but their fluxes come from a different measurement path with its own systematics,
-    and they are exactly the objects Week 3's star/galaxy classifier fails on. Calibration
-    against bright reference stars has to live inside this limit.
+    **Why this matters.** A survey has a bright limit as well as a faint one. Saturated stars
+    are not lost, but their fluxes come from a different measurement path with its own
+    systematics, and they are the same objects that Week 3's star/galaxy classifier fails on.
+    Any calibration against bright reference stars has to work inside this limit.
 
-    **Also seen in the hand-ins:** a six-panel map of visits per band showing
-    the Galactic plane covered in griz but barely in u and y; a table of the photometric error
-    each toy transient would have at peak, with the result that the 5 mmag calibration floor
-    matters only for sources brighter than $m_5 - 4.1$; and a three-way sensitivity study
-    (18,000 vs 10,000 deg², 30 vs 60 s) showing that doubling the visit length at fixed area
-    leaves the coadd depth and lensing count unchanged while the supernova count rises.
+    **Also seen in the hand-ins:** a six-panel map of visits per band, which shows the
+    Galactic plane covered in griz but barely in u and y; a table of the photometric error
+    each toy transient would have at peak, showing that the 5 mmag calibration floor only
+    matters for sources brighter than $m_5 - 4.1$; and a three-way comparison (18,000 vs
+    10,000 deg², 30 vs 60 s) showing that doubling the visit length at fixed area leaves the
+    coadd depth and the lensing count unchanged while the supernova count goes up.
     """),
 ]
 
 PART2_CELLS = [
     _c("md", """
-    ## Part 2 · Where the reasoning slipped
+    ## Part 2 · Where the reasoning went wrong
 
-    Each item below appeared in at least one hand-in. The computation under it is the one to
-    remember.
+    Each item below showed up in at least one hand-in. The calculation under each one is the
+    thing to remember.
 
     ### Aperture "doesn't help much"
 
     One notebook moved the aperture slider, saw a modest change, and concluded that exposure
-    time is the better lever. In the sky-limited regime $m_5$ gains $2.5\\log_{10}$ of the
-    aperture ratio, and aperture buys depth without spending visits:
+    time is the better lever. In the sky-limited regime, $m_5$ improves by $2.5\\log_{10}$ of
+    the aperture ratio, and aperture buys depth without spending any visits:
     """),
     _c("code", """
     base = m5("r")
@@ -340,18 +343,18 @@ PART2_CELLS = [
         print(f"2 x {t:2d} s:          m5 = {m5('r', t_exp=t):.2f}  ({m5('r', t_exp=t) - base:+.2f})")
     """),
     _c("md", """
-    Doubling the aperture gains 0.82 mag; doubling the exposure gains 0.42. Doubling the
-    aperture is worth quadrupling the exposure, and it costs no visits.
+    Doubling the aperture gains 0.82 mag. Doubling the exposure time gains 0.42. So doubling
+    the aperture is worth quadrupling the exposure, and it costs no visits.
 
     ### Which depth is this?
 
-    Three numbers for the single-visit r-band depth went around: 24.7 (design, from the
-    worksheet), 24.48 (the as-built camera at fiducial conditions, Notebook B), 24.06 (the
-    simulated ten-year median visit). All three are *single visits*. Several hand-ins mixed
-    them with coadds: one compared a 1000 × 30 s `m5()` call against the 2 × 15 s reference
-    and concluded the system falls short of its Milky Way requirements, when those numbers
-    exceed the requirements by 3 mag; another labeled a 20 × 30 s stack "as-built single-visit
-    depth". Keep the two columns apart:
+    Three numbers for the single-visit r-band depth came up: 24.7 (the design value, from the
+    worksheet), 24.48 (the as-built camera under fiducial conditions, from Notebook B), and
+    24.06 (the simulated ten-year median visit). All three are single visits. Several hand-ins
+    mixed them up with coadds. One compared a 1000 × 30 s `m5()` call against the 2 × 15 s
+    reference and concluded the system falls short of its Milky Way requirements, when those
+    numbers actually beat the requirements by 3 mag. Another labeled a 20 × 30 s stack
+    "as-built single-visit depth". Keep the two columns apart:
     """),
     _c("code", """
     med = main_survey_medians(maps)
@@ -367,17 +370,17 @@ PART2_CELLS = [
     pd.DataFrame(rows).T.round(2)
     """),
     _c("md", """
-    The last column is not a visit, and not the survey either: `m5()` stacks identical
-    exposures with no change of seeing or sky, while the real coadd is 700-odd different
-    visits. Say which depth you mean, every time.
+    The last column is not a visit, and it is not the survey either. `m5()` stacks identical
+    exposures with no change in seeing or sky, while the real coadd is 700-odd different
+    visits. Always say which depth you mean.
 
     ### The budget is fixed
 
     "We changed to longer exposures per visit, which slightly increases the total exposure
-    time." It cannot: the ten years are the budget. Longer visits mean fewer of them.
-    Likewise "point-source depth increased when I raised the area to 30,000 deg²": the
-    single-visit depth does not know the area, and the coadd gets *shallower* because each
-    field gets fewer visits. What rises with area is the total galaxy count.
+    time." It cannot. The ten years are the budget, so longer visits mean fewer of them. In
+    the same spirit, "point-source depth increased when I raised the area to 30,000 deg²":
+    the single-visit depth does not depend on the area, and the coadd gets shallower because
+    each field gets fewer visits. What goes up with area is the total number of galaxies.
     """),
     _c("code", """
     plans = {
@@ -396,8 +399,8 @@ PART2_CELLS = [
     One notebook plotted lensing galaxies per deg² against survey area, saw it fall, called it
     "weak-lensing resolution", and argued for a smaller survey. The mechanism in the notebook
     was right: less area means more visits per field, a deeper coadd, and more usable galaxies
-    per square arcminute. But shear statistics scale with the *total* number of galaxies (and
-    with area, against cosmic variance). Plot both:
+    per square arcminute. But shear statistics depend on the total number of galaxies (and on
+    area, to beat down cosmic variance). Plot both:
     """),
     _c("code", """
     areas = np.linspace(1_000, 30_000, 60)
@@ -410,11 +413,11 @@ PART2_CELLS = [
     _c("md", """
     ### 1.1″ is not "lower" than 0.7″, and it is not what we expect
 
-    Two slips about seeing. "The first 15 days PSF is 1.1″, lower than the designed 0.7″":
-    a larger FWHM is worse image quality. And "the effective seeing we expect is 1.1″, which
-    cuts usable galaxies from 40 to 30, acceptable": 1.1″ is the first two weeks of
-    commissioning, not the ten-year expectation, and 40 → 30 is the resolution-only loss.
-    With the depth loss included the toy model gives:
+    Two slips about seeing. First, "the first 15 days PSF is 1.1″, lower than the designed
+    0.7″": a larger FWHM is worse image quality. Second, "the effective seeing we expect is
+    1.1″, which cuts usable galaxies from 40 to 30, acceptable": 1.1″ is what was delivered in
+    the first two weeks of commissioning, not the expectation for ten years, and 40 → 30 is
+    the loss from resolution alone. With the depth loss included, the toy model gives:
     """),
     _c("code", """
     for label, fwhm in (("design", 0.7), ("first night delivered", 0.91), ("first ~15 days delivered", 1.1)):
@@ -422,14 +425,14 @@ PART2_CELLS = [
     """),
     _c("md", """
     A 45% cut in usable galaxies is not "acceptable" for a survey whose lensing figure of
-    merit scales with that number. One more from the same paragraph: "observing sharper
-    images through coadd". Coadding does not sharpen; it averages the PSFs of the input
-    visits, which is a Week 3 topic.
+    merit scales with that number. One more from the same paragraph: "observing sharper images
+    through coadd". Coadding does not sharpen anything. It averages the PSFs of the input
+    visits, which we will come back to in Week 3.
 
     ### The deep fields catch kilonovae because they look every night
 
-    Not because they are deep. The toy kilonova at 200 Mpc peaks at 20.5 in every band,
-    3 to 4 mag brighter than any single visit's limit, so depth is not the constraint:
+    Not because they are deep. The toy kilonova at 200 Mpc peaks at 20.5 in every band, 3 to
+    4 mag brighter than any single visit's limit, so depth is not what limits you:
     """),
     _c("code", """
     print("kilonova peak magnitude at 200 Mpc:", {b: round(float(kilonova(np.array([0.0]), b)[0]), 2) for b in BANDS})
@@ -440,11 +443,12 @@ PART2_CELLS = [
     _c("md", """
     ### The u band and read noise
 
-    Three hand-ins touched the question of why one 30 s exposure beats two 15 s exposures in
-    u. The right reason, given by one of you: the u sky is dark, so for a 15 s exposure the
-    read noise squared is comparable to the sky counts, and splitting the visit pays the read
-    noise twice. Not because u sources are faint, and not because the throughput is low as
-    such. The exposure time at which sky noise overtakes read noise differs strongly by band:
+    Three hand-ins got into why one 30 s exposure beats two 15 s exposures in u. The right
+    reason, which one of you gave: the u sky is dark, so in a 15 s exposure the read noise
+    squared is comparable to the sky counts, and splitting the visit pays the read noise
+    twice. It is not because u sources are faint, and not because the throughput is low as
+    such. The exposure time at which sky noise overtakes read noise is very different from
+    band to band:
     """),
     _c("code", """
     read_noise = 8.8
@@ -457,37 +461,38 @@ PART2_CELLS = [
     ### A visit is not an exposure
 
     Three hand-ins called the 30 s visit "an exposure" when working out whether a moving
-    object trails. Notebook B's reference visit was 2 × 15 s, so an asteroid at 0.04″/s
-    moves 0.6″ per exposure and 1.2″ per visit. The project has since moved to single 30 s
-    exposures, so the trailing question is now the per-visit one. Either way, state which you
-    mean.
+    object trails. Notebook B's reference visit was 2 × 15 s, so an asteroid moving at
+    0.04″/s trails 0.6″ per exposure and 1.2″ per visit. The project has since moved to single
+    30 s exposures, so the trailing question is now the per-visit one. Either way, say which
+    one you mean.
 
     ### 833 is the worksheet, 725 is the survey
 
     833 visits per field is the worksheet budget at 18,000 deg². The simulation gives a
-    main-survey median of 725 and coadds about 0.1 mag shallower than the worksheet's. Two
-    hand-ins contrasted them correctly; one quoted 833 as what fields get.
+    main-survey median of 725, with coadds about 0.1 mag shallower than the worksheet
+    predicts. Two hand-ins compared these correctly. One quoted 833 as what fields actually get.
 
     ### Smaller slips, each from one notebook
 
-    - **A "season" is the ~200-day stretch each year when a field is observable**, not a
-      calendar quarter. A main-survey field gets about 35 nights per season, COSMOS about 130.
+    - **A "season" is the stretch of about 200 days each year when a field is observable**,
+      not a calendar quarter. A main-survey field gets about 35 nights per season, COSMOS
+      about 130.
     - **A shallower visit is not a shorter one.** Reading 24.06 as "a 9 s exposure, so 620
-      visits instead of 186" inverts the question: the survey loses 0.6 mag *at* 30 s and gets
-      no visits back.
-    - **Visit-rich pixels shorten the median gap, not lengthen it.**
-    - **A light curve at MJD 50000** is 30 years before the survey starts (MJD 61208); no
-      detections can appear. Check the time axis before interpreting an empty plot.
-    - **A smaller sky magnitude is a brighter sky.** r and i have the *brightest* sky of the
-      optical bands, not the darkest; they are preferred for shapes because of seeing and
-      galaxy colors.
+      visits instead of 186" gets it backwards. The survey loses 0.6 mag at 30 s and gets no
+      visits back.
+    - **Pixels with many visits make the median gap shorter, not longer.**
+    - **A light curve at MJD 50000** is 30 years before the survey starts (MJD 61208), so no
+      detections can show up. Check the time axis before you interpret an empty plot.
+    - **A smaller sky magnitude means a brighter sky.** r and i have the brightest sky of the
+      optical bands, not the darkest. They are preferred for shape measurement because of the
+      seeing and galaxy colors.
     - **Fill factor (91%) and the never-seen fraction (8.3%) are different quantities** that
-      happen to be numerically close.
+      happen to have similar values.
     - **Fast transients need deep single visits and short gaps**, not "short single-visit
       depth".
     - **Noise does not scale with the telescope diameter**, and field of view and plate scale
-      are independent.
-    - **One verification paragraph was copied from the other notebook.** Check that the numbers
+      are independent of each other.
+    - **One verification paragraph was copied from the other notebook.** Make sure the numbers
       you quote come from the figure above them.
     """),
 ]
@@ -496,7 +501,7 @@ PART3_CELLS = [
     _c("md", """
     ## Part 3 · The numbers
 
-    The values the class quoted most, with where they come from. "Design" is the worksheet
+    The values the class quoted most, and where they come from. "Design" is the worksheet
     and Ivezić et al. (2019); "simulated" is baseline v5.3.3; "as built" is Notebook B's
     camera model.
 
@@ -523,30 +528,30 @@ PART4_CELLS = [
     _c("md", """
     ## Part 4 · What the class got right
 
-    Reached independently by several of you, and worth keeping:
+    Several of you reached these independently. They are worth keeping:
 
     - **Seeing dominates the depth loss** (four hand-ins, three with evidence).
-    - **The longest exposure before an asteroid trails is about the seeing divided by its
+    - **The longest exposure before an asteroid trails is roughly the seeing divided by its
       angular speed**, 16 to 20 s at 0.04″/s (three hand-ins).
-    - **Deep fields win on cadence, cover too little sky, so kilonova science needs
+    - **Deep fields win on cadence but cover too little sky, so kilonova science needs
       gravitational-wave alerts and target-of-opportunity time** (four).
-    - **Twilight NEO sweeps take more visits than hours** because the exposures are short at
-      the same overhead (three).
+    - **Twilight NEO sweeps take more visits than hours**, because the exposures are short and
+      the overhead is the same (three).
     - **The main survey is 80% of visits and of hours** (three).
     - **Mirrors limit u; detector QE sets the red edge of y** (five).
     - **More area means fewer visits per field and a shallower coadd; less area means a
-      shorter revisit** (five).
+      shorter revisit time** (five).
     - **You cannot stack a kilonova**: transients and moving objects break the coadd's
-      constant-source assumption (three).
+      assumption that the source does not change (three).
     - **The median gap hides a long tail**: 11 days at the 90th percentile in a main-survey
       field, a month at the south polar cap (four).
     - **The toy supernova count is an upper bound**: no cadence, no light-curve sampling, no
       host redshift (two).
-    - **Dithering removes the never-seen fraction at the cost of a spread in visit counts**
+    - **Dithering removes the never-seen fraction, at the cost of a spread in visit counts**
       (three).
 
-    And on disclosure: every hand-in that used an AI tool said what it was used for, and the
-    best ones said how the result was checked. Keep doing that.
+    One more thing. Every hand-in that used an AI tool said what it was used for, and the best
+    ones said how the result was checked. Please keep doing this.
     """),
 ]
 
