@@ -528,7 +528,7 @@ PART4_CELLS = [
     _c("md", """
     ## Part 4 · What the class got right
 
-    Several of you reached these independently. They are worth keeping:
+    Several of you reached these independently. They are worth remembering:
 
     - **Seeing dominates the depth loss** (four hand-ins, three with evidence).
     - **The longest exposure before an asteroid trails is roughly the seeing divided by its
