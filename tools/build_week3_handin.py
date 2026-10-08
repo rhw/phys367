@@ -35,15 +35,18 @@ INTRO_CELLS = [
       mask planes, blends, galaxy counts, and single-visit vs coadd depth.
 
     This notebook is the hand-in. **Pick one of the four exercises below**, each one a step
-    from Monday's lecture, make its figure, and write the paragraph at the end. The warm-up
-    is optional. Each exercise comes with a starter cell that loads what it needs and a few
-    questions to steer the paragraph; the measurement and the plot are yours.
+    from Monday's lecture, make its figure, and write the paragraph at the end. One exercise is
+    the whole assignment; the warm-up and the "go further" options are extra. Each exercise
+    comes with a starter cell that loads what it needs and a few questions to steer the
+    paragraph; the measurement and the plot are yours.
+
+    Exercises 1–3 run from a catalog file and take seconds. Exercise 4 is the adventurous
+    choice: it uses the Butler, takes a few minutes per sky position, and is the one most
+    exposed to a busy Science Platform.
 
     **How to use it.** Run on the Rubin Science Platform (<https://data.lsst.cloud>) with the
     **LSST** kernel, from the same folder as the three notebooks above. Run the setup cell
-    first, then go straight to your exercise. Exercises 1–3 use the COSMOS catalog Eli
-    extracted for the tutorial and run in seconds. Exercise 4 uses the Butler and takes a
-    few minutes per sky position. Budget one to two hours.
+    first, then go straight to your exercise. Budget one to two hours.
     """),
     _c("md", """
     ## Setup
@@ -159,6 +162,11 @@ EX1_CELLS = [
       the same magnitudes? What else broadens a "stellar" locus there?
     - Which of the systematics from Monday's lecture does a catalog error, by construction,
       know nothing about?
+
+    > **Go further.** Split the locus stars with `detect_isIsolated` into isolated and blended,
+    > and measure the width separately for each. If a neighbor's light is in the PSF flux, which
+    > sample should be wider, and by how much? Or fit $\\sigma^2 = \\sigma_0^2 + (a\\,\\sigma_\\mathrm{rep})^2$
+    > and report $a$: the single number by which the catalog errors would have to be scaled.
     """),
     _c("code", """
     gmr, rmi = g - r, r - i
@@ -228,6 +236,12 @@ EX2_CELLS = [
     - The DP2 flag guidance says the extendedness columns have not been characterized for
       purity or completeness. What data would you need to measure those here? (COSMOS has
       Hubble imaging that resolves far more galaxies than Rubin can.)
+
+    > **Go further.** Test the faint "stars" directly. The catalog has second moments for each
+    > object and for the PSF at its position: `i_ixx + i_iyy` is the object's size $T$ and
+    > `i_ixxPSF + i_iyyPSF` the PSF's. For objects with `ref_ext < 0.5` in bins of i, plot the
+    > distribution of $T_\\mathrm{obj}/T_\\mathrm{PSF}$. A true star sits at 1. What fraction of
+    > the i > 24 "stars" do?
     """),
     _c("code", """
     classified = ok & np.isfinite(model_ext)
@@ -282,8 +296,11 @@ EX3_CELLS = [
     - Which differences between HSC Wide and a DP2 deep field explain the gap from 58%?
     - About 15% of objects here are isolated. If your science needs isolated galaxies, what
       have you selected on, and where on the sky will your sample be missing?
-    - *On the RSP, optional:* in Alex's notebook, move `ra, dec` to a patch at low Galactic
-      latitude and rerun the blend count. How does the fraction compare with COSMOS?
+
+    > **Go further.** In Alex's notebook, move `ra, dec` to a patch at low Galactic latitude
+    > (or any crowded spot from Eli's star-density map) and rerun the blend count of section 5.
+    > How does the fraction compare with COSMOS at the same magnitude, and which of depth,
+    > seeing, and crowding moved it?
     """),
     _c("code", """
     from scipy.spatial import cKDTree
@@ -355,6 +372,10 @@ EX4_CELLS = [
     - How far below the coadd depth does the catalog turn over, and is that offset the same at
       the three positions? What would you need before quoting the map's depth as your
       sample's depth?
+
+    > **Go further.** Repeat in a second band (`depth_at(ra, dec, band="g")`). Does the
+    > leftover change sign or size with band? Stacking is achromatic; the PSF term and the sky
+    > are not. Or add two more positions and plot the leftover against the number of visits.
     """),
     _c("code", """
     # Butler access: this cell runs on the RSP LSST kernel.
@@ -459,17 +480,24 @@ HANDIN_CELLS = [
 
     Due Monday Oct 12 on Canvas. Turn in: (1) one figure from the exercise you chose;
     (2) one paragraph: what did you measure, what does it say about the catalog, and what
-    would it mean for your team's science case?; (3) a sentence on any AI tools you used.
+    would it mean for your team's science case? **Quote at least one number read off your
+    figure**; (3) a sentence on any AI tools you used, on the labeled line in the last cell.
     Upload the .ipynb or a PDF. Graded complete/incomplete.
 
-    Make your figure in the code cell below. Write your paragraph and the AI-tools sentence in
-    the last cell.
+    Make your figure in the code cell below. Write your paragraph and fill in the AI-tools line
+    in the last cell.
+
+    **One exercise is the assignment.** The *Go further* box in each exercise, or a second
+    exercise, is optional and does not change the grade. If you do one, add it below your
+    hand-in.
     """),
     _c("code", """
     # Your hand-in figure
     """),
     _c("md", """
     *Your paragraph here.*
+
+    **AI tools:** *none, or which ones and what for.*
     """),
 ]
 

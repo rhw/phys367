@@ -22,6 +22,7 @@ def test_four_exercises_and_handin_in_order():
     assert headings == ["## Exercise 1", "## Exercise 2", "## Exercise 3", "## Exercise 4", "## Hand-in"]
     assert [md.index(h) for h in headings] == sorted(md.index(h) for h in headings)
     assert "Oct 12" in md
+    assert md.count("> **Go further.**") == 4 and "**AI tools:**" in md and "at least one number" in md
 
 
 def test_starter_cells_compile_and_stay_off_tools():
