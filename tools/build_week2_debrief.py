@@ -84,6 +84,11 @@ PART1_CELLS = [
     you asked which of seeing, airmass and sky explains the drop. Two approaches appeared: a
     scatter of every main-survey visit's $m_5$ against each quantity, and a stepwise call of
     `m5()` changing one input at a time. Here are both.
+
+    **Why it matters.** Every requirement in Week 1 was set against the design depth. If the
+    real survey is 0.6 mag shallower, knowing *which* input causes it tells you whether the
+    loss is permanent (the site's seeing), seasonal (sky brightness), or something the
+    scheduler can trade against (airmass).
     """),
     _c("code", """
     r_visits = points[(points["band"] == "r") & (points["category"] == "main")]
@@ -119,8 +124,9 @@ PART1_CELLS = [
 
     **A cautionary tale from the same question.** One notebook reported that airmass alone
     explained 0.48 of the 0.6 mag. The code had `airmass=1.8` where the simulation median is
-    1.18. The three terms then summed to 24.06 almost exactly, which made the typo feel
-    confirmed. A surprising result is a prompt to check the input, not to explain it.
+    1.18. The three terms then summed to 24.06 almost exactly, which made the typo look
+    right. When one term comes out much larger than you expected, check the inputs before
+    building an explanation on it; the coincidence of the total was the misleading part.
     (A subtlety: with `fwhm_eff=None`, `m5()` also widens the PSF by airmass$^{0.6}$, so to
     separate the terms hold the delivered seeing fixed, as the stepwise table does.)
     """),
@@ -151,14 +157,18 @@ PART1_CELLS = [
     ax.legend(); plt.show()
     """),
     _c("md", """
-    From 0.7″ to 1.3″ the time to reach the same depth triples. That is why the first weeks
-    of commissioning, at 0.9″ to 1.1″, matter for the survey budget and not only for the
-    image quality.
+    From 0.7″ to 1.3″ the time to reach the same depth triples.
 
-    ### 3. The overhead nobody budgets
+    **Takeaway.** Seeing is usually discussed as an image-quality number, but for a survey
+    with a fixed number of hours it is a budget number: every 0.1″ of extra PSF width is
+    time you do not get back. That is why the 0.9″ to 1.1″ of the first commissioning weeks
+    matters beyond the pictures.
 
-    The worksheet budget counts a 5 s visit as one sixth of a 30 s visit. Two of you added
-    the 9 s of readout, shutter and slew per visit, one in code and one by hand.
+    ### 3. The 9 s of overhead per visit
+
+    The worksheet budget counts a 5 s visit as one sixth of a 30 s visit. Notebook A flagged
+    the readout, shutter and slew that every visit also costs; two of you put the 9 s into
+    the budget, one in code and one by hand.
     """),
     _c("code", """
     area, t_visit, overhead = 18_000, 5, 9
@@ -167,6 +177,11 @@ PART1_CELLS = [
     print(f"30 s visits, 9 s overhead:{BUDGET / (area * (30 + overhead) / 30):.0f} visits per field (vs 833 without)")
     """),
     _c("md", """
+    **Takeaway.** Short visits look free in a budget that only counts open-shutter time, and
+    they are not: at 5 s the overhead cuts the visit count by a factor of 2.8. This is the
+    reason Rubin's visits are 30 s and not 5, and why the fast-cadence science cases had to
+    argue for time rather than assume it.
+
     ### 4. What the storm costs
 
     Phil Marshall quoted 7,267 visits taken out of 17,273 possible in the first two weeks.
@@ -189,10 +204,16 @@ PART1_CELLS = [
     made it look band-dependent. The second notebook also noted that a contiguous gap is
     worse than a uniform 40% cut, because it removes whole seasons from some fields.
 
+    **Takeaway.** Lost time costs every band the same depth, so "which band suffers" is the
+    wrong question; "which science needs the visits that were lost" is the right one. The
+    lensing count drops 18% and the pair rate for asteroids 40%, while the supernova count
+    in this toy does not move, because it depends on single-visit depth, not on how many
+    visits there are.
+
     ### 5. How much sky actually reaches r = 27?
 
     The median ten-year r-band coadd is 26.94, so "r ≥ 27 over 18,000 deg²" is not what the
-    simulation delivers. One of you measured it.
+    simulation delivers. One of you measured how much sky does reach it.
     """),
     _c("code", """
     r_maps = maps[maps["band"] == "r"]
@@ -201,6 +222,10 @@ PART1_CELLS = [
     print(f"{'':9s} main-survey median 10-yr r coadd: {main_survey_medians(maps).loc['r', 'm5_coadd']:.2f}")
     """),
     _c("md", """
+    **Takeaway.** A survey's depth is a distribution, not a number, and a requirement written
+    as a threshold ("r ≥ 27") is met over a very different area than the median suggests.
+    When your science case needs a depth, ask how many square degrees reach it, and when.
+
     ### 6. Kilonovae: one table for three questions
 
     "Which preset catches the kilonova within 2 days? At 400 Mpc? Within 5 days?" One
@@ -222,6 +247,11 @@ PART1_CELLS = [
     kilonova science work. One notebook wrote that the deep fields rank highest "because the
     observations are extremely deep"; see Part 2.
 
+    **Takeaway.** For anything that fades in days, the question is not "how deep" but "how
+    often", and the answer is set by where the scheduler points, not by the telescope. That
+    is why the fast-transient science cases depend on alerts and target-of-opportunity time
+    as much as on Rubin itself.
+
     ### 7. Time delays: season gaps or noise?
 
     One of you ran the lensed-quasar estimator once with and once without noise, got 28 and
@@ -237,8 +267,12 @@ PART1_CELLS = [
     """),
     _c("md", """
     The gapped, noise-free case recovers the true 30 days exactly; it is the noise that moves
-    the estimate. One run with each setting cannot tell you that. This is the general lesson
-    about random realizations: look at several seeds before you name the cause.
+    the estimate. One run with each setting cannot tell you that.
+
+    **Takeaway.** Whenever a result depends on a random realization, one run is an anecdote.
+    Changing the seed a few times costs seconds and is the difference between naming the
+    right limiting factor and the wrong one. The same habit applies to real data: a
+    conclusion from one patch of sky needs a second patch.
 
     ### 8. When does the camera saturate?
 
@@ -270,11 +304,13 @@ PART1_CELLS = [
     """),
     _c("md", """
     Stars brighter than about r = 16 saturate in a 30 s visit, close to what Rubin quotes.
-    Those stars are not lost to the survey, but their fluxes come from a different pipeline
-    path, which is why bright-end photometry has its own systematics; Week 3's star/galaxy
-    classifier also fails on exactly these objects.
 
-    **Also seen, and worth a look in the hand-ins:** a six-panel map of visits per band showing
+    **Takeaway.** A survey has a bright limit as well as a faint one. Saturated stars are not
+    lost, but their fluxes come from a different measurement path with its own systematics,
+    and they are exactly the objects Week 3's star/galaxy classifier fails on. Calibration
+    against bright reference stars has to live inside this limit.
+
+    **Also seen in the hand-ins:** a six-panel map of visits per band showing
     the Galactic plane covered in griz but barely in u and y; a table of the photometric error
     each toy transient would have at peak, with the result that the 5 mmag calibration floor
     matters only for sources brighter than $m_5 - 4.1$; and a three-way sensitivity study
