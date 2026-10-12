@@ -1,0 +1,401 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "id": "2e577aaa-24ed-4755-b0d7-e0302dddb093",
+   "metadata": {},
+   "source": [
+    "## This explores the sizes of objects\n",
+    "\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "fbb43009-fcfd-485c-9a43-e01fc6aa1c4f",
+   "metadata": {},
+   "source": [
+    "#### Standard inputs"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "98d481b8-0572-41fd-8a4a-aa45649bd3e9",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import os\n",
+    "import tables_io\n",
+    "import numpy as np\n",
+    "import matplotlib.pyplot as plt\n",
+    "import pyccl as ccl"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "7bc24363-1c12-4c90-88d7-1ac8755e38f1",
+   "metadata": {},
+   "source": [
+    "Change this to be the correct location"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "adf77bb4-0f83-43e3-9ea0-62299dd13363",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "pz_dir = '.'"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "89ddada8-13e9-44a7-81b2-31d36dddced0",
+   "metadata": {},
+   "source": [
+    "#### Set up the cosmology & the evaluation grids"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "13afb954-96f9-4778-9ece-3713a4db080f",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "cosmo = ccl.Cosmology(\n",
+    "    Omega_c=0.25, Omega_b=0.05,\n",
+    "    h=0.7, n_s=0.95, sigma8=0.8,\n",
+    "    transfer_function='bbks'\n",
+    ")\n",
+    "\n",
+    "z_grid = np.linspace(0., 6., 301)[1:]\n",
+    "a_grid = (1/(1+z_grid))\n",
+    "D_a = cosmo.angular_diameter_distance(a_grid)\n",
+    "rad_to_asec = 360*60*60/(2*np.pi) \n",
+    "ang_scale = D_a * 1000/ rad_to_asec\n",
+    "dist_mod = cosmo.distance_modulus(a_grid)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "b7b24829-054d-4409-a52d-7dc762748114",
+   "metadata": {},
+   "source": [
+    "#### Plot the apparent magntidue of the MW-like object (abs mag -20)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "e81f75ed-cda1-464f-82d6-fcadfb255721",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "_ = plt.plot(z_grid, dist_mod-20)\n",
+    "_ = plt.ylabel(\"Apparent Magntiude of MW like object\")\n",
+    "_ = plt.xlabel(\"Redshift\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "45d26203-f7e1-43e3-9a0d-ef18ae7fa9cd",
+   "metadata": {},
+   "source": [
+    "#### Plot the angular scale as a function of redshift"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "62b70118-b78f-4151-bc07-6e95f0d8a13b",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "_ = plt.plot(z_grid, ang_scale)\n",
+    "_ = plt.ylabel(\"Angular Scale [kpc/arcsec]\")\n",
+    "_ = plt.xlabel(\"Redshift\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "ae9dd203-b35d-4fb3-bd61-51c8e21be6a6",
+   "metadata": {},
+   "source": [
+    "#### Plot the locus for MW-like and significantly brighter galaxy"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "5acd5641-68cc-47fc-83f6-61ce47738529",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "_ = plt.plot(dist_mod-20, 5/ang_scale, label=\"MW-like\")\n",
+    "_ = plt.plot(dist_mod-22.5, 10/ang_scale, label=\"10x MW\")\n",
+    "_ = plt.xlabel('Brightness [mag]')\n",
+    "_ = plt.ylabel('Size [\"]')\n",
+    "_ = plt.legend()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "caa2f822-55f7-4f2e-82e9-9ab404cc6463",
+   "metadata": {},
+   "source": [
+    "#### Now read some DP1 data for comparision"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "5fa884fe-6298-47dc-83b1-9e50ce383a23",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "t = tables_io.read(f'{pz_dir}/data/object.hdf5')"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "19f16e2b-3e6e-4ced-b7d4-c78b8a31fb8b",
+   "metadata": {},
+   "source": [
+    "#### Extract some useful quantities relating to the galaxy shape and size"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "7a8dabf0-dbaf-4bef-be9c-9c99a19dc74e",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def r_95_of_n(n):\n",
+    "    return 1.25 + 1.125*n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "8a439a2c-46cb-42ed-810d-7b12f369d34a",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "blendedness = t['i_blendedness']\n",
+    "blendedness = np.where(np.isnan(blendedness), 0., blendedness).clip(0., 1.)\n",
+    "mask  = np.bitwise_and(\n",
+    "    np.bitwise_and(\n",
+    "        t['i_extendedness'] == 1,\n",
+    "        t['g_psfFlux'] / t['g_psfFluxErr'] > 10,\n",
+    "    ),\n",
+    "    np.bitwise_and(\n",
+    "        t['i_psfFlux'] / t['i_psfFluxErr'] > 10,\n",
+    "        t['r_psfFlux'] / t['r_psfFluxErr'] > 10,\n",
+    "    ),\n",
+    ")\n",
+    "mask_unblend = np.bitwise_and(mask, blendedness<0.1)\n",
+    "mask_blend = np.bitwise_and(mask, blendedness>0.1)\n",
+    "blend = t['detect_fromBlend']\n",
+    "psf_flux = t['i_psfFlux']\n",
+    "cModel_flux = t['i_cModelFlux']\n",
+    "cModel_flux = t['i_sersicFlux']\n",
+    "shape_xx = t['i_ixx']\n",
+    "shape_yy = t['i_iyy']\n",
+    "shape_xy = t['i_ixy']\n",
+    "psf_xx = t['i_ixxDebiasedPSF']\n",
+    "psf_yy = t['i_iyyDebiasedPSF']\n",
+    "psf_xy = t['i_ixyDebiasedPSF']\n",
+    "shape_det = shape_xx*shape_yy - shape_xy*shape_xy\n",
+    "shape_trace = shape_xx + shape_yy\n",
+    "shape_area = np.sqrt(shape_det)\n",
+    "psf_det = psf_xx*psf_yy - psf_xy*psf_xy\n",
+    "psf_trace = psf_xx + psf_yy\n",
+    "sersic_x = t['sersic_reff_x']\n",
+    "sersic_y = t['sersic_reff_y']\n",
+    "sersic_rho = t['sersic_rho']\n",
+    "sersic_index = t['sersic_index']\n",
+    "sersic_factor = r_95_of_n(sersic_index)\n",
+    "sersic_xx = sersic_x*sersic_x\n",
+    "sersic_yy = sersic_y*sersic_y\n",
+    "sersic_trace = sersic_xx + sersic_yy\n",
+    "sersic_xy = sersic_x*sersic_y*sersic_rho\n",
+    "sersic_det = sersic_xx*sersic_yy - sersic_xy*sersic_xy\n",
+    "sqrt_sersic_trace = np.sqrt(sersic_trace)\n",
+    "sqrt_sersic_det = np.sqrt(sersic_det)\n",
+    "bdReB = t['i_bdReB']\n",
+    "bdReD = t['i_bdReD']\n",
+    "kron_rad = t['i_kronRad']\n",
+    "psf_mag = -2.5 * np.log10(t['i_psfFlux']) + 31.4\n",
+    "cModel_mag = -2.5 * np.log10(t['i_cModelFlux']) + 31.4\n",
+    "sersic_mag = -2.5 * np.log10(t['i_sersicFlux']) + 31.4"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "303f361d-a266-4d91-a30d-60fa4acf8cc7",
+   "metadata": {},
+   "source": [
+    "#### Let's plot some of these quantities\n",
+    "\n",
+    "Here is a plot of the \"trace\" size for the galaxy moments and for the point-spread function.\n",
+    "\n",
+    "Here is a drawing that shows a geometrical interpretation of the \"Trace\" size: https://docs.google.com/presentation/d/1XOIBx4M2QjBeErpwHVMjb4eMyaq5KVgMtT1s2Fp-kjI/edit?usp=sharing"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "d6c61c99-21e9-41c3-acaf-c68ed8b2cc3d",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "_ = plt.hist(np.sqrt(shape_trace[mask])*0.2, np.linspace(0, 2, 201), label='Moment')\n",
+    "_ = plt.hist(np.sqrt(psf_trace[mask])*0.2, np.linspace(0, 2, 201), label='PSF')\n",
+    "_ = plt.legend()\n",
+    "_ = plt.xlabel(r'$T^{1/2}$ [\"]')"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "06bcd0c7-cd1b-436c-ae62-5c48f1aa9d62",
+   "metadata": {},
+   "source": [
+    "#### Here is a plot that shows the trace size for the Sersic fits, which have the point-spread function deconvolved."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "0913dcc1-6404-462a-a6c8-2c7e3eaedb8c",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "_ = plt.hist(np.sqrt(sersic_trace[mask_blend])*0.2, bins=np.linspace(0, 5, 201), label='all')\n",
+    "_ = plt.yscale('log')"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "2fef3550-d5cf-4f54-91ca-afa6e2cfb494",
+   "metadata": {},
+   "source": [
+    "#### Here we compare the sersic trace to the moment trace\n",
+    "\n",
+    "We see that Sersic trace is typically smaller, as it has the PSF removed."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "1fc2b579-85bf-445b-95db-548173befe8e",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "_ = plt.hist2d(sersic_trace, shape_trace, bins=(np.linspace(0, 40, 201), np.linspace(0, 40., 201)), norm='log')\n",
+    "_ = plt.xlim(0, 40)\n",
+    "_ = plt.ylim(0, 40)\n",
+    "_ = plt.xlabel(r'$T_{\\rm sersic}$')\n",
+    "_ = plt.ylabel(r'$T_{\\rm moment}$')"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "3f679608-2ae7-4b67-be05-2b5cac32a960",
+   "metadata": {},
+   "source": [
+    "#### Here we compare subtracting the PSF Trace from the moment trace with the Sersic trace and show that they are quite correlated"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "c17ec34c-6de3-4c70-9f83-bd32f561bcd6",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "_ = plt.hist2d(np.sqrt(shape_trace[mask]-psf_trace[mask])*0.2, np.sqrt(sersic_trace[mask])*0.2, bins=(np.linspace(0, 2, 201), np.linspace(0, 2., 201)), norm='log')\n",
+    "_ = plt.xlabel(r'$(T_{\\rm moment} - T_{\\rm psf})^{1/2}$ [\"]')\n",
+    "_ = plt.ylabel(r'$(T_{\\rm sersic})^{1/2}$ [\"]')"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "936dbd2b-2d7d-4308-b821-d02b7058c29c",
+   "metadata": {},
+   "source": [
+    "### The next couple of plots show the size versus the magnitude of the galaxies in our sample\n",
+    "\n",
+    "The first plot is for the Sersic trace, which is about equal to the half-light size of the galaxy, \n",
+    "the curves show how galaxies similar to the Milky Way might show up in this plot.\n",
+    "\n",
+    "The second plot accounts for the Sersic profile and shows the 90% light radius."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "9390cae2-e516-4fc3-bd3c-1b9a8e09facc",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "_ = plt.hist2d(cModel_mag[mask], np.sqrt(sersic_trace[mask])*0.2, bins=(np.linspace(16, 26, 201), np.linspace(0, 4, 201)), norm='log')\n",
+    "_ = plt.xlabel(r'$i_{\\rm cModel} [mag]$')\n",
+    "_ = plt.ylabel(r'$(T_{\\rm sersic})^{1/2}$ [\"]')\n",
+    "_ = plt.plot(dist_mod-20, 5./ang_scale, label=\"-20 [mag], 5kpc (MW-like)\")\n",
+    "_ = plt.plot(dist_mod-22.5, 10./ang_scale, label=\"-22.5 [mag], 10kpc\")\n",
+    "_ = plt.plot(dist_mod-22.5, 5./ang_scale, label=\"-22.5 [mag], 5kpc\")\n",
+    "_ = plt.ylim(0, 5.)\n",
+    "_ = plt.legend()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "b1af741e-07bc-4ae5-bc1f-354cfc48427b",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "_ = plt.hist2d(cModel_mag[mask_unblend], sersic_factor[mask_unblend]*np.sqrt(sersic_trace[mask_unblend])*0.2, bins=(np.linspace(16, 26, 201), np.linspace(0, 10, 201)), norm='log')\n",
+    "_ = plt.xlabel(r'$i_{\\rm cModel} [mag]$')\n",
+    "_ = plt.ylabel(r'$\\frac{r_{\\rm 90}}{r_{\\rm 50}}(T_{\\rm sersic})^{1/2}$ [\"]')\n",
+    "_ = plt.plot(dist_mod-20, 10./ang_scale, label=\"-20 [mag], 10kpc (MW-like)\")\n",
+    "_ = plt.plot(dist_mod-22.5, 10./ang_scale, label=\"-22.5 [mag], 10kpc\")\n",
+    "_ = plt.plot(dist_mod-22.5, 5./ang_scale, label=\"-22.5 [mag], 5kpc\")\n",
+    "_ = plt.ylim(0, 10.)\n",
+    "_ = plt.legend()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "66974c23-5f76-4194-a0ba-1c5de677e66d",
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3 (ipykernel)",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.13.16"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
