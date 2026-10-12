@@ -9,24 +9,26 @@ Tablelike: TypeAlias = Any
 
 
 def setup_data() -> int:  # pragma: no cover
-    home = os.environ['HOME']
-    print(home)
-    if not os.path.exists(f"{home}/macss.tgz"):
+    if not os.path.exists("phys367_week4_data.tgz"):
         urllib.request.urlretrieve(
-            "http://s3df.slac.stanford.edu/people/echarles/xfer/macss.tgz",
-            f"{home}/macss.tgz",
+            "http://s3df.slac.stanford.edu/people/echarles/to_download/phys367_week4_data.tgz",
+            "phys367_week4_data.tgz",
         )
-        print(f"File downloaded to {home}/macss.tgz")        
-        if not os.path.exists(f"{home}/macss.tgz"):
+        print(f"File downloaded to phys367_week4_data.tgz")        
+        if not os.path.exists("phys367_week4_data.tgz"):
             return 1
-    if not os.path.exists(f"{home}/macss"):
-        status = subprocess.run(["tar", "zxvf", f"{home}/macss.tgz", "-C", f"{home}"], check=False)
+
+    if not os.path.exists(f"data/object.hdf5"):
+        print(f"Uncompressing phys367_week4_data.tgz")
+        status = subprocess.run(["tar", "zxvf", "phys367_week4_data.tgz"], check=False)
         if status.returncode != 0:
             return status.returncode
+        if not os.path.exists("data/object.hdf5"):        
+            return 2
+    else:
+        print("Data already downloaded and uncompressed")
 
-    if not os.path.exists(f"{home}/macss/data/object.hdf5"):
-        return 2
-
+    print("Data setup complete!")
     return 0
 
 
