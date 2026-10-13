@@ -43,14 +43,14 @@ Tutorials from Wednesday's hands-on (Eric Charles and Tianqing (TQ) Zhang):
 - [`C_SklearnRegresssion.ipynb`](week4/C_SklearnRegresssion.ipynb) · A very simple example using scikit-learn to build a photometric redshift estimator.
 
 - [`Extra_Morphology.ipynb`](week4/Extra_Morphology.ipynb) · Explores some of the quantities in the catalog related to object morphology.
-- [`Extra_SklearnMorphology.ipynb`](week4/Extra_GalaxySize.iypnbExtra_SklearnMorphology.ipynb) · Uses scikit-learn to build a photometric redshift estimator that includes object morphology. 
+- [`Extra_SklearnMorphology.ipynb`](week4/Extra_SklearnMorphology.ipynb) · Uses scikit-learn to build a photometric redshift estimator that includes object morphology. 
 - [`Extra_GalaxySize.iypnb`](week4/Extra_GalaxySize.iypnb) · Explores the relationship between redshift and galaxy size.
 - [`Extra_AdmixStudy.iypnb`](week4/Extra_AdmixStudy.ipynb) · Explores the effect of flux contamination (i.e., blending) on redshift estimation.
 - [`Extra_NoiseStudy.ipynb`](week4/Extra_NoiseStudy.ipynb) · Explores the effect of photometric noise redshift estimation.
 
-
 **3 · Hand-in** (due Mon Oct 19): [`handin.ipynb`](week4/handin.ipynb). Pick one of size exercises, make its figure, write the paragraph.
 
+Note: you may need to add the packages in 'week4/requirements.txt' (e.g., with 'pip install -r  'week4/requirements.txt')  to your conda environment to run these notebooks. 
 
 ### Run Locally
 
@@ -65,6 +65,9 @@ To run the notebooks on your own computer:
 2. **Install dependencies:**
    ```bash
    pip install numpy pandas pyarrow matplotlib astropy ipywidgets jupyter
+   
+   # for week4 you might need to also do:
+   pip install -r week4/requirements.txt
    ```
 
 3. **Open a notebook** (Week 2 Notebook A or B; the Week 3 notebooks need the RSP):
