@@ -28,6 +28,25 @@ def setup_data() -> int:  # pragma: no cover
     else:
         print("Data already downloaded and uncompressed")
 
+    if not os.path.exists("phys367_dp1.tgz"):
+        urllib.request.urlretrieve(
+            "https://portal.nersc.gov/cfs/lsst/tqzhang/phys367_dp1.tgz",
+            "phys367_dp1.tgz",
+        )
+        print(f"File downloaded to phys367_dp1.tgz")
+        if not os.path.exists("phys367_dp1.tgz"):
+            return 1
+
+    if not os.path.exists(f"data/dp1_photoz/output_estimate_fzboost.hdf5"):
+        print(f"Uncompressing phys367_dp1.tgz")
+        status = subprocess.run(["tar", "zxvf", "phys367_dp1.tgz"], check=False)
+        if status.returncode != 0:
+            return status.returncode
+        if not os.path.exists("data/dp1_photoz/output_estimate_fzboost.hdf5"):
+            return 2
+    else:
+        print("DP1 photo-z data already downloaded and uncompressed")
+
     print("Data setup complete!")
     return 0
 
