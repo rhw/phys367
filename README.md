@@ -31,6 +31,27 @@ Tutorials from Wednesday's hands-on (Alex Broughton and Eli Rykoff):
 
 **3 · Hand-in** (due Mon Oct 12): [`handin.ipynb`](week3/handin.ipynb). Pick one of four exercises (calibration, selection, deblending, depth), make its figure, write the paragraph.
 
+
+## Week 4: Photometric redshifts
+
+Week 4 will need to download some data.
+
+Tutorials from Wednesday's hands-on (Eric Charles and Tianqing (TQ) Zhang):
+
+- [`week4_A_ExploreFluxes.ipynb`](week4/week4_A_ExploreFluxes.ipynb) · Looking at different types of flux measurements that are present in the Rubin catalogs.
+- [`week4_B_ExploreInputs.ipynb`](week4/week4_B_ExploreInputs.ipynb) · Looking at the inputs for photometric redshift estimation algorithms.
+- [`week4_C_SklearnRegression.ipynb`](week4/week4_C_SklearnRegression.ipynb) · A very simple example using scikit-learn to build a photometric redshift estimator.
+
+- [`week4_Extra_Morphology.ipynb`](week4/week4_Extra_Morphology.ipynb) · Explores some of the quantities in the catalog related to object morphology.
+- [`week4_Extra_SklearnMorphology.ipynb`](week4/week4_Extra_SklearnMorphology.ipynb) · Uses scikit-learn to build a photometric redshift estimator that includes object morphology. 
+- [`week4_Extra_GalaxySize.ipynb`](week4/week4_Extra_GalaxySize.ipynb) · Explores the relationship between redshift and galaxy size.
+- [`week4_Extra_AdmixStudy.ipynb`](week4/week4_Extra_AdmixStudy.ipynb) · Explores the effect of flux contamination (i.e., blending) on redshift estimation.
+- [`week4_Extra_NoiseStudy.ipynb`](week4/week4_Extra_NoiseStudy.ipynb) · Explores the effect of photometric noise on redshift estimation.
+
+**4 · Hand-in** (due Mon Oct 19): [`week4_handin.ipynb`](week4/week4_handin.ipynb). Pick one of six exercises, make its figure, write the paragraph.
+
+Note: you may need to add the packages in `week4/requirements.txt` (e.g., with `pip install -r week4/requirements.txt`)  to your conda environment to run these notebooks. 
+
 ### Run Locally
 
 To run the notebooks on your own computer:
@@ -44,6 +65,9 @@ To run the notebooks on your own computer:
 2. **Install dependencies:**
    ```bash
    pip install numpy pandas pyarrow matplotlib astropy ipywidgets jupyter
+   
+   # for week4 you might need to also do:
+   pip install -r week4/requirements.txt
    ```
 
 3. **Open a notebook** (Week 2 Notebook A or B; the Week 3 notebooks need the RSP):
