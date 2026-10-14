@@ -38,19 +38,19 @@ Week 4 will need to download some data.
 
 Tutorials from Wednesday's hands-on (Eric Charles and Tianqing (TQ) Zhang):
 
-- [`A_ExploreFluxes.ipynb`](week4/A_ExploreFluxes.ipynb) · Looking at different types of flux measurements that are present in the Rubin catalogs.
-- [`B_ExploreInputs.ipynb`](week4/B_ExploreInputs.ipynb) · Looking at the inputs for photometric redshift estimation algorithms.
-- [`C_SklearnRegresssion.ipynb`](week4/C_SklearnRegresssion.ipynb) · A very simple example using scikit-learn to build a photometric redshift estimator.
+- [`week4_A_ExploreFluxes.ipynb`](week4/week4_A_ExploreFluxes.ipynb) · Looking at different types of flux measurements that are present in the Rubin catalogs.
+- [`week4_B_ExploreInputs.ipynb`](week4/week4_B_ExploreInputs.ipynb) · Looking at the inputs for photometric redshift estimation algorithms.
+- [`week4_C_SklearnRegression.ipynb`](week4/week4_C_SklearnRegression.ipynb) · A very simple example using scikit-learn to build a photometric redshift estimator.
 
-- [`Extra_Morphology.ipynb`](week4/Extra_Morphology.ipynb) · Explores some of the quantities in the catalog related to object morphology.
-- [`Extra_SklearnMorphology.ipynb`](week4/Extra_SklearnMorphology.ipynb) · Uses scikit-learn to build a photometric redshift estimator that includes object morphology. 
-- [`Extra_GalaxySize.iypnb`](week4/Extra_GalaxySize.iypnb) · Explores the relationship between redshift and galaxy size.
-- [`Extra_AdmixStudy.iypnb`](week4/Extra_AdmixStudy.ipynb) · Explores the effect of flux contamination (i.e., blending) on redshift estimation.
-- [`Extra_NoiseStudy.ipynb`](week4/Extra_NoiseStudy.ipynb) · Explores the effect of photometric noise redshift estimation.
+- [`week4_Extra_Morphology.ipynb`](week4/week4_Extra_Morphology.ipynb) · Explores some of the quantities in the catalog related to object morphology.
+- [`week4_Extra_SklearnMorphology.ipynb`](week4/week4_Extra_SklearnMorphology.ipynb) · Uses scikit-learn to build a photometric redshift estimator that includes object morphology. 
+- [`week4_Extra_GalaxySize.ipynb`](week4/week4_Extra_GalaxySize.ipynb) · Explores the relationship between redshift and galaxy size.
+- [`week4_Extra_AdmixStudy.ipynb`](week4/week4_Extra_AdmixStudy.ipynb) · Explores the effect of flux contamination (i.e., blending) on redshift estimation.
+- [`week4_Extra_NoiseStudy.ipynb`](week4/week4_Extra_NoiseStudy.ipynb) · Explores the effect of photometric noise on redshift estimation.
 
-**3 · Hand-in** (due Mon Oct 19): [`handin.ipynb`](week4/handin.ipynb). Pick one of size exercises, make its figure, write the paragraph.
+**4 · Hand-in** (due Mon Oct 19): [`week4_handin.ipynb`](week4/week4_handin.ipynb). Pick one of six exercises, make its figure, write the paragraph.
 
-Note: you may need to add the packages in 'week4/requirements.txt' (e.g., with 'pip install -r  'week4/requirements.txt')  to your conda environment to run these notebooks. 
+Note: you may need to add the packages in `week4/requirements.txt` (e.g., with `pip install -r week4/requirements.txt`)  to your conda environment to run these notebooks. 
 
 ### Run Locally
 

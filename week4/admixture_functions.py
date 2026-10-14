@@ -14,10 +14,10 @@ def make_admixture(
     Parameters
     ----------
     mags:
-        Input mags [N_bands, N_objects]
+        Input mags [N_objects, N_bands]
 
     library:
-        Library for adding admixtures  [N_bands, N_bkg_objects]
+        Library for adding admixtures  [N_bkg_objects, N_bands]
 
     admixture:
         Admixture fraction
@@ -67,7 +67,7 @@ def gaussian_noise(
     Parameters
     ----------
     mags:
-        Input mags [N_bands, N_objects]
+        Input mags [N_objects, N_bands]
 
     noise_levels:
         Noise levels (in mags)

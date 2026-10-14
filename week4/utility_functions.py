@@ -104,7 +104,7 @@ def make_mag_dict(
     band_name_template: str,
     bands: list[str],
 ) -> dict[str, np.ndarray]:
-    """Extract magntidues from a table to a dict of numpy arrays
+    """Extract magnitudes from a table to a dict of numpy arrays
 
     Parameters
     ----------
@@ -139,7 +139,7 @@ def make_colors(
     Parameters
     ----------
     data:
-        Input data, with magntidues
+        Input data, with magnitudes
 
     band_name_template:
         Template to make the names
@@ -237,7 +237,7 @@ def fluxes_to_mags(
 
     Returns
     -------
-    Output magntidues
+    Output magnitudes
     """
     return -2.5 * np.log10(fluxes) + zero_points
 
