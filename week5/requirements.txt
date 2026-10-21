@@ -1,0 +1,17 @@
+# Everything the TDE search notebook imports. `astropy`, `matplotlib`, `numpy`,
+# `ipywidgets` and `jupyter` are already in the course's base set, so if you have that,
+# `babamul`, `python-dotenv` and `tqdm` are the only additions.
+#
+# The import name is `dotenv` but the package is `python-dotenv`. There is a separate
+# PyPI package called `dotenv`, and it is not the one you want.
+#
+# `ipywidgets` is not optional: the notebook imports `babamul.jupyter`, which imports
+# ipywidgets at module level.
+astropy
+babamul
+ipywidgets
+jupyter
+matplotlib
+numpy
+python-dotenv
+tqdm
