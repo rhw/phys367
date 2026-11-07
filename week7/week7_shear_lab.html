@@ -1,0 +1,1338 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+:root { color-scheme: light; }
+html { -webkit-text-size-adjust: 100%; }
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+</style>
+<title>Galaxy Shear Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Newsreader:opsz,wght@6..72,500;6..72,600&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&display=swap">
+<style>
+:root {
+  --ground: #F3F5F8;
+  --surface: #FFFFFF;
+  --ink: #16202D;
+  --ink-soft: #4B5768;
+  --rule: #D8DEE7;
+  --accent: #2A5B88;
+  --accent-ink: #FFFFFF;
+  --signal: #C9741F;
+  --alert: #B42318;
+  --ok: #2F7D4F;
+  --callout: #E9EFF6;
+  --plot-bg: #FFFFFF;
+  --plot-grid: #E3E8EF;
+  --kappa-hi: #2A5B88;
+  --font-display: "Newsreader", Georgia, "Times New Roman", serif;
+  --font-body: "Source Sans 3", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --ground: #0E141E;
+    --surface: #151D29;
+    --ink: #E2E8F0;
+    --ink-soft: #A2AEC0;
+    --rule: #283345;
+    --accent: #8CB7E2;
+    --accent-ink: #0E141E;
+    --signal: #F2A64B;
+    --alert: #FF8B7E;
+    --ok: #7FD1A1;
+    --callout: #172235;
+    --plot-bg: #111925;
+    --plot-grid: #222D3D;
+    --kappa-hi: #5F9BD4;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ground: #0E141E;
+  --surface: #151D29;
+  --ink: #E2E8F0;
+  --ink-soft: #A2AEC0;
+  --rule: #283345;
+  --accent: #8CB7E2;
+  --accent-ink: #0E141E;
+  --signal: #F2A64B;
+  --alert: #FF8B7E;
+  --ok: #7FD1A1;
+  --callout: #172235;
+  --plot-bg: #111925;
+  --plot-grid: #222D3D;
+  --kappa-hi: #5F9BD4;
+}
+
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 17px;
+  line-height: 1.6;
+}
+.page {
+  max-width: 1480px;
+  margin: 0 auto;
+  padding-inline: clamp(16px, 4vw, 40px);
+  padding-block: 44px 72px;
+  display: flex;
+  flex-direction: column;
+}
+h1, h2, h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  line-height: 1.15;
+  text-wrap: balance;
+  margin: 0;
+}
+h1 { font-size: clamp(2.1rem, 5vw, 3.2rem); letter-spacing: -0.01em; }
+h2 { font-size: clamp(1.5rem, 3.2vw, 2.05rem); }
+h3 { font-size: 1.15rem; }
+p { margin: 0; }
+a { color: var(--accent); }
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+header.intro { display: flex; flex-direction: column; gap: 14px; padding-block: 0 34px; }
+.lede { font-size: 1.16rem; color: var(--ink-soft); max-width: 78ch; }
+.prose { max-width: 76ch; display: flex; flex-direction: column; gap: 0.85em; }
+.split { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 24px 56px; align-items: start; }
+.split.even { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.split > .prose, .split > .callout, .split > .lede { max-width: none; }
+.trio-text { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px 40px; }
+
+.prose ul, .prose ol { margin: 0; padding-left: 1.3em; display: flex; flex-direction: column; gap: 0.35em; }
+section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding-block: 38px;
+  border-top: 1px solid var(--rule);
+}
+.part-label { font-family: var(--font-mono); font-size: 0.8rem; color: var(--ink-soft); letter-spacing: 0.04em; }
+.sym { font-family: var(--font-display); font-style: italic; font-size: 1.06em; }
+math { font-family: "STIX Two Math", "Cambria Math", "Latin Modern Math", math; font-size: 1.12em; }
+math[display="block"] { margin-block: 0.4em; overflow-x: auto; max-width: 100%; }
+
+/* lab benches */
+.bench {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  padding: 18px;
+  display: grid;
+  grid-template-columns: minmax(210px, 250px) minmax(0, 1fr);
+  gap: 22px;
+}
+.controls { display: flex; flex-direction: column; gap: 16px; }
+.control { display: flex; flex-direction: column; gap: 4px; }
+.control label, .control .label {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 0.92rem;
+  color: var(--ink-soft);
+}
+.control output, .mono {
+  font-family: var(--font-mono);
+  font-size: 0.86rem;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
+input[type="checkbox"] { accent-color: var(--accent); width: 1.05em; height: 1.05em; }
+.check { display: flex; align-items: center; gap: 8px; font-size: 0.92rem; color: var(--ink); cursor: pointer; }
+.segmented { display: flex; border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; }
+.segmented label { flex: 1; position: relative; display: block; cursor: pointer; }
+.segmented input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+.segmented span {
+  display: block;
+  text-align: center;
+  padding: 6px 4px;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+.segmented label + label span { border-left: 1px solid var(--rule); }
+.segmented input:checked + span { background: var(--accent); color: var(--accent-ink); }
+.segmented input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: -3px; }
+.btn {
+  font: 600 0.9rem var(--font-body);
+  color: var(--accent-ink);
+  background: var(--accent);
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+.btn:focus-visible, input:focus-visible, canvas:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.row { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; }
+input[type="number"] {
+  width: 6.5em;
+  font: 0.9rem var(--font-mono);
+  color: var(--ink);
+  background: var(--ground);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+.hint { font-size: 0.82rem; color: var(--ink-soft); line-height: 1.45; }
+
+.figs { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.duo { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.duo.even { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+figure { margin: 0; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+figcaption { font-family: var(--font-mono); font-size: 0.76rem; color: var(--ink-soft); line-height: 1.4; }
+canvas { display: block; width: 100%; max-width: 100%; }
+canvas.square { aspect-ratio: 1 / 1; border-radius: 6px; }
+canvas.wide { aspect-ratio: 4 / 3.4; }
+canvas.banner { aspect-ratio: 2 / 1; border-radius: 6px; }
+.bench.stacked { grid-template-columns: minmax(0, 1fr); }
+.controls.inline { flex-direction: row; flex-wrap: wrap; align-items: flex-end; gap: 14px 32px; }
+.controls.inline > .control { width: min(100%, 280px); }
+#field { cursor: crosshair; touch-action: none; }
+
+.readout { overflow-x: auto; }
+.readout table { border-collapse: collapse; font-family: var(--font-mono); font-size: 0.8rem; font-variant-numeric: tabular-nums; width: 100%; }
+.readout th, .readout td { padding: 5px 10px; text-align: right; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+.readout th:first-child, .readout td:first-child { text-align: left; color: var(--ink-soft); }
+.readout thead th { color: var(--ink-soft); font-weight: 400; }
+
+.status { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; font-size: 0.92rem; }
+.chip {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+}
+.chip.ok { color: var(--ok); }
+.chip.alert { color: var(--alert); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 0.8rem; color: var(--ink-soft); align-items: center; }
+.swatch { display: inline-block; width: 12px; height: 12px; border-radius: 50%; vertical-align: -1px; margin-right: 5px; }
+.kbar {
+  display: inline-block;
+  width: 90px;
+  height: 10px;
+  border-radius: 3px;
+  vertical-align: -1px;
+  margin-inline: 6px;
+  background: linear-gradient(90deg, var(--plot-bg), var(--kappa-hi));
+  border: 1px solid var(--rule);
+}
+
+.callout {
+  background: var(--callout);
+  border-radius: 10px;
+  padding: 14px 18px;
+  max-width: 72ch;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.callout .tag { font-family: var(--font-mono); font-size: 0.74rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+
+
+@media (max-width: 1050px) {
+  .split, .split.even, .trio-text { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 780px) {
+  .bench { grid-template-columns: minmax(0, 1fr); }
+  .duo, .duo.even { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 460px) {
+  .trio { gap: 6px; }
+  figcaption { font-size: 0.68rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { scroll-behavior: auto !important; }
+}
+</style>
+
+</head>
+<body>
+<main class="page">
+  <header class="intro">
+    <span class="eyebrow">Phys 367 · Weak lensing I</span>
+    <h1>What shear does to galaxies</h1>
+    <div class="split">
+    <p class="lede">Mass bends light. A galaxy far behind a massive object (a <em>lens</em>) appears slightly <strong>stretched</strong> (shear) and slightly <strong>bigger and brighter</strong> (magnification). In weak lensing these changes are a few percent at most, so we can only detect them by averaging over many galaxies.</p>
+    <div class="prose">
+      <p>Everything here is simulated live in your browser. You will:</p>
+      <ol>
+        <li><a href="#galaxy">Shear and magnify a single galaxy</a> with sliders.</li>
+        <li><a href="#halo">Move a massive halo</a> around a field of background galaxies and watch the pattern it imprints.</li>
+        <li><a href="#blend">See how shear can merge neighbouring galaxies</a> until a detection algorithm sees them as one object.</li>
+      </ol>
+    </div>
+    </div>
+  </header>
+
+  <section id="distortion">
+    <h2>The lensing distortion</h2>
+    <div class="split">
+    <div class="prose">
+      <p>Near a point on the sky, lensing acts as a linear map from the true (source) position <span class="sym">β</span> to the observed (image) position <span class="sym">θ</span>:</p>
+      <math display="block">
+        <mrow>
+          <mover><mi>β</mi><mo stretchy="false">→</mo></mover><mo>=</mo><mi mathvariant="bold">A</mi><mspace width="0.15em"></mspace><mover><mi>θ</mi><mo stretchy="false">→</mo></mover>
+          <mo>,</mo><mspace width="1.4em"></mspace>
+          <mi mathvariant="bold">A</mi><mo>=</mo>
+          <mrow>
+            <mo>(</mo>
+            <mtable columnspacing="1.2em">
+              <mtr>
+                <mtd><mn>1</mn><mo>−</mo><mi>κ</mi><mo>−</mo><msub><mi>γ</mi><mn>1</mn></msub></mtd>
+                <mtd><mo>−</mo><msub><mi>γ</mi><mn>2</mn></msub></mtd>
+              </mtr>
+              <mtr>
+                <mtd><mo>−</mo><msub><mi>γ</mi><mn>2</mn></msub></mtd>
+                <mtd><mn>1</mn><mo>−</mo><mi>κ</mi><mo>+</mo><msub><mi>γ</mi><mn>1</mn></msub></mtd>
+              </mtr>
+            </mtable>
+            <mo>)</mo>
+          </mrow>
+        </mrow>
+      </math>
+      <ul>
+        <li><span class="sym">κ</span> (<strong>convergence</strong>) changes the size of an image but not its shape.</li>
+        <li><span class="sym">γ</span> = (<span class="sym">γ</span><sub>1</sub>, <span class="sym">γ</span><sub>2</sub>) (<strong>shear</strong>) stretches it: <span class="sym">γ</span><sub>1</sub> &gt; 0 stretches along <span class="sym">x</span>, <span class="sym">γ</span><sub>1</sub> &lt; 0 along <span class="sym">y</span>, and <span class="sym">γ</span><sub>2</sub> does the same along the diagonals.</li>
+      </ul>
+    </div>
+    <div class="prose">
+      <p>What we can measure from shapes is the <strong>reduced shear</strong></p>
+      <math display="block">
+        <mrow><mi>g</mi><mo>=</mo><mfrac><mi>γ</mi><mrow><mn>1</mn><mo>−</mo><mi>κ</mi></mrow></mfrac></mrow>
+      </math>
+      <p>Because surface brightness is conserved, a bigger image is also a brighter one, by the <strong>magnification</strong></p>
+      <math display="block">
+        <mrow>
+          <mi>μ</mi><mo>=</mo>
+          <mfrac>
+            <mn>1</mn>
+            <mrow>
+              <msup><mrow><mo>(</mo><mn>1</mn><mo>−</mo><mi>κ</mi><mo>)</mo></mrow><mn>2</mn></msup>
+              <mo>−</mo>
+              <msup><mrow><mo>|</mo><mi>γ</mi><mo>|</mo></mrow><mn>2</mn></msup>
+            </mrow>
+          </mfrac>
+        </mrow>
+      </math>
+    </div>
+    </div>
+  </section>
+
+  <section id="galaxy">
+    <span class="part-label">Part 1</span>
+    <h2>Shear a galaxy</h2>
+    <div class="split">
+    <div class="prose">
+      <p>Move the sliders. The cyan ellipse is the shape <em>measured</em> from the image using its second moments, the same kind of measurement real surveys use.</p>
+      <ul>
+        <li>Set <span class="sym">g</span><sub>1</sub> = 0.3, then <span class="sym">g</span><sub>2</sub> = 0.3. Which direction does each stretch?</li>
+        <li>Move only <span class="sym">κ</span>. The difference image changes, but the measured <span class="sym">g</span><sub>1</sub>, <span class="sym">g</span><sub>2</sub> stay at zero: convergence changes <strong>size and flux</strong>, not shape.</li>
+        <li>Turn the PSF blur on and off. The atmosphere and telescope blur (the PSF) makes the galaxy rounder, so the <strong>measured</strong> shear is <em>smaller</em> than the true one. Correcting for this is the job of the shear <em>response</em>, the subject of Notebook 2.</li>
+      </ul>
+    </div>
+    <div class="callout">
+      <span class="tag">Question</span>
+      <p>Real cosmic shear is about |<span class="sym">g</span>| ≈ 0.01–0.03, while galaxies are intrinsically elliptical with a scatter of about <span class="sym">σ</span><sub>e</sub> ≈ 0.26 per component. Set <span class="sym">g</span><sub>1</sub> = 0.02: could you tell, from one galaxy, that it was sheared? How many galaxies would you need to average so that the noise <span class="sym">σ</span><sub>e</sub>/√<span class="sym">N</span> falls below 0.02? Below 0.002?</p>
+    </div>
+    </div>
+
+    <div class="bench">
+      <div class="controls">
+        <div class="control">
+          <label for="g1">reduced shear g₁ <output id="g1-out" for="g1">+0.00</output></label>
+          <input type="range" id="g1" min="-0.5" max="0.5" step="0.01" value="0">
+        </div>
+        <div class="control">
+          <label for="g2">reduced shear g₂ <output id="g2-out" for="g2">+0.00</output></label>
+          <input type="range" id="g2" min="-0.5" max="0.5" step="0.01" value="0">
+        </div>
+        <div class="control">
+          <label for="kappa">convergence κ <output id="kappa-out" for="kappa">+0.000</output></label>
+          <input type="range" id="kappa" min="-0.02" max="0.02" step="0.001" value="0">
+        </div>
+        <label class="check"><input type="checkbox" id="psf" checked> Blur with PSF (FWHM 0.7″)</label>
+        <p class="hint">Exponential disk, half-light radius 0.7″, drawn on 0.2″ pixels like Rubin's camera.</p>
+      </div>
+      <div class="figs">
+        <div class="trio">
+          <figure><canvas id="gal-ref" class="square" role="img" aria-label="Original galaxy image"></canvas><figcaption>original</figcaption></figure>
+          <figure><canvas id="gal-len" class="square" role="img" aria-label="Lensed galaxy image"></canvas><figcaption>lensed</figcaption></figure>
+          <figure><canvas id="gal-dif" class="square" role="img" aria-label="Difference image"></canvas><figcaption id="dif-cap">lensed − original</figcaption></figure>
+        </div>
+        <div class="readout">
+          <table>
+            <thead><tr><th></th><th>g₁</th><th>g₂</th><th>size [″]</th><th>flux</th></tr></thead>
+            <tbody>
+              <tr><td>applied</td><td id="ap-g1">+0.000</td><td id="ap-g2">+0.000</td><td colspan="2" id="ap-mu">κ = +0.000, μ = 1.000</td></tr>
+              <tr><td>measured, original</td><td id="m0-g1">–</td><td id="m0-g2">–</td><td id="m0-s">–</td><td id="m0-f">–</td></tr>
+              <tr><td>measured, lensed</td><td id="m1-g1">–</td><td id="m1-g2">–</td><td id="m1-s">–</td><td id="m1-f">–</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+  <section id="halo">
+    <span class="part-label">Part 2</span>
+    <h2>A halo lensing background galaxies</h2>
+    <div class="split even">
+    <div class="prose">
+      <p>A dark-matter halo with a Navarro–Frenk–White (NFW) profile sits at redshift <span class="sym">z</span><sub>ℓ</sub> = 0.3, in front of a grid of <strong>perfectly round</strong> galaxies at <span class="sym">z</span><sub>s</sub> = 1. Each galaxy is drawn as the ellipse it would appear as after lensing. Their sizes are exaggerated so you can see them; the shear is the true one unless you choose to exaggerate it.</p>
+    </div>
+    <div class="prose">
+      <ul>
+        <li><strong>Click</strong> the map to place the lens; <strong>click and drag</strong> to move it around.</li>
+        <li>Change the mass from 10<sup>12</sup> (a Milky-Way-like galaxy) to 5 × 10<sup>15</sup> <span class="sym">M</span><sub>⊙</sub>/<span class="sym">h</span> (a very massive cluster).</li>
+        <li>Grey galaxies sit so close to the centre that lensing is no longer weak (|<span class="sym">g</span>| ≥ 1). This is the <em>strong lensing</em> region, where we would see arcs and multiple images.</li>
+      </ul>
+    </div>
+    </div>
+
+    <div class="bench">
+      <div class="controls">
+        <div class="control">
+          <label for="mass">halo mass <output id="mass-out" for="mass">1.0 × 10¹⁴ M☉/h</output></label>
+          <input type="range" id="mass" min="12" max="15.699" step="0.01" value="14">
+        </div>
+        <div class="control">
+          <span class="label" id="amp-label">show shear</span>
+          <div class="segmented" role="radiogroup" aria-labelledby="amp-label">
+            <label><input type="radio" name="amp" id="amp1" value="1" checked><span>true</span></label>
+            <label><input type="radio" name="amp" id="amp3" value="3"><span>×3</span></label>
+            <label><input type="radio" name="amp" id="amp10" value="10"><span>×10</span></label>
+          </div>
+        </div>
+        <div class="control">
+          <label for="lx">lens x <output id="lx-out" for="lx">0″</output></label>
+          <input type="range" id="lx" min="-300" max="300" step="1" value="0">
+        </div>
+        <div class="control">
+          <label for="ly">lens y <output id="ly-out" for="ly">0″</output></label>
+          <input type="range" id="ly" min="-300" max="300" step="1" value="0">
+        </div>
+        <p class="hint" id="field-info">–</p>
+      </div>
+      <div class="figs">
+        <div class="duo">
+          <figure>
+            <canvas id="field" class="square" tabindex="0" role="img" aria-label="Map of lensed background galaxies; click or drag to move the lens"></canvas>
+            <figcaption>click or drag to move the lens ★ · background shade: convergence κ <span class="kbar" aria-hidden="true"></span> 10⁻³ … 1</figcaption>
+          </figure>
+          <figure>
+            <canvas id="profile" class="wide" role="img" aria-label="Tangential shear versus distance from the lens"></canvas>
+            <figcaption>tangential shear g<sub>t</sub> of this halo (bold) and of other masses (faint)</figcaption>
+          </figure>
+        </div>
+      </div>
+    </div>
+
+    <div class="split">
+    <div class="prose">
+      <h3>Things to notice</h3>
+      <ul>
+        <li>Galaxies are stretched <strong>tangentially</strong>, perpendicular to the line pointing to the lens. This pattern, not any single galaxy, is the signal.</li>
+        <li>The shear falls off with distance. For a 10<sup>12</sup> <span class="sym">M</span><sub>⊙</sub>/<span class="sym">h</span> halo it is invisible by eye even next to the lens; for a massive cluster it is visible out to several arcminutes.</li>
+        <li>Use <em>show shear ×10</em> to see the pattern of a low-mass halo. In real data we "exaggerate" by <em>stacking</em> thousands of lenses (galaxy–galaxy lensing).</li>
+        <li>The right panel compares <span class="sym">g</span><sub>t</sub> with the scatter in galaxy shapes (dashed) and with that scatter averaged over 10<sup>4</sup> galaxies (dotted).</li>
+      </ul>
+    </div>
+    <div class="callout">
+      <span class="tag">Question</span>
+      <p>For a 10<sup>14</sup> <span class="sym">M</span><sub>⊙</sub>/<span class="sym">h</span> halo, read off <span class="sym">g</span><sub>t</sub> at <span class="sym">r</span> = 100″ and <span class="sym">r</span> = 300″ from the right panel. Roughly how many background galaxies are needed to detect each at 3<span class="sym">σ</span>?</p>
+    </div>
+    </div>
+  </section>
+
+  <section id="blend">
+    <span class="part-label">Part 3</span>
+    <h2>Shear and blending</h2>
+    <div class="split even">
+    <div class="prose">
+      <p>Shear stretches every galaxy. When two galaxies are close on the sky, stretching them along the line that joins them makes their light overlap more, and they can merge into what looks like a single object. Stretching them across that line does the opposite.</p>
+      <p>Below is a 64″ × 32″ patch of sky with about 35 galaxies, most of them in close pairs. Every galaxy gets the same shear, but only its <strong>shape</strong> changes: the positions stay fixed, to keep things simple. We add noise and run a very simple <strong>detection algorithm</strong>: smooth the image with the PSF, keep pixels more than 5<span class="sym">σ</span> above the noise, group touching pixels into "footprints", and split each footprint at its brightness peaks (a simple <em>deblender</em>). Each colour is one detected object.</p>
+    </div>
+    <div class="prose">
+      <ul>
+        <li>Each colour is one detected object. When two galaxies merge, the merged object keeps the colour of one of them, and every other object keeps its colour.</li>
+        <li>Most pairs overlap so much that they share one footprint; the deblender still splits them because it sees two brightness peaks.</li>
+        <li>Change <span class="sym">g</span><sub>1</sub>, <span class="sym">g</span><sub>2</sub>: stretching a pair along the line joining it fills in the dip between its peaks, until the two galaxies are detected as <strong>one object</strong>. Already |<span class="sym">g</span>| ≈ 0.1–0.3 does this for several pairs.</li>
+        <li>Only pairs lined up with the stretch merge. Pairs lying across it become easier to separate, and a pair that was unresolved without shear can split.</li>
+        <li>Press <em>New galaxies</em> for a different random patch.</li>
+      </ul>
+    </div>
+    </div>
+
+    <div class="bench stacked">
+      <div class="controls inline">
+        <div class="control">
+          <label for="b-g1">reduced shear g₁ <output id="b-g1-out" for="b-g1">+0.00</output></label>
+          <input type="range" id="b-g1" min="-0.5" max="0.5" step="0.01" value="0">
+        </div>
+        <div class="control">
+          <label for="b-g2">reduced shear g₂ <output id="b-g2-out" for="b-g2">+0.00</output></label>
+          <input type="range" id="b-g2" min="-0.5" max="0.5" step="0.01" value="0">
+        </div>
+        <div class="row">
+          <div class="control">
+            <label for="seed">patch</label>
+            <input type="number" id="seed" min="1" step="1" value="1">
+          </div>
+          <button class="btn" id="new-scene" type="button">New galaxies</button>
+        </div>
+        <div class="control">
+          <span class="label">overlays</span>
+          <label class="check"><input type="checkbox" id="show-seg" checked> Colour detected objects</label>
+          <label class="check"><input type="checkbox" id="show-marks" checked> Mark centres and peaks</label>
+        </div>
+        <div class="legend">
+          <span><span class="swatch" style="background:#D7263D"></span>true centre ×</span>
+          <span><span class="swatch" style="background:#1E88E5"></span>detected peak ○</span>
+        </div>
+      </div>
+      <div class="figs">
+        <canvas id="scene" class="banner" role="img" aria-label="Simulated patch of sky with detected objects"></canvas>
+        <div class="status" aria-live="polite">
+          <span id="scene-counts" class="mono">–</span>
+          <span id="scene-chip" class="chip ok">all separated</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="split">
+    <div class="prose">
+      <p><strong>Why this matters.</strong> Whether a galaxy is detected (or blended, and so measured badly) depends on the shear itself. So the shear changes which galaxies end up in our sample, and the average shape of that sample is biased. This <em>shear-dependent detection and selection</em> is one of the main motivations for <strong>metadetection</strong>, the method used for the Rubin shear catalog in Notebook 2: it runs detection <em>again</em> on artificially sheared images so that the effect can be measured and removed.</p>
+    </div>
+    <div class="callout">
+      <span class="tag">Question</span>
+      <p>Set <span class="sym">g</span><sub>1</sub> = +0.3 and note which pairs merge, then try <span class="sym">g</span><sub>1</sub> = −0.3 and <span class="sym">g</span><sub>2</sub> = ±0.3. How does the orientation of the merged pairs change? If galaxy pairs are oriented at random, would a survey lose the same number of galaxies for every direction of shear?</p>
+    </div>
+    </div>
+  </section>
+
+  <section id="summary">
+    <h2>Summary</h2>
+    <div class="trio-text">
+        <p>Weak lensing changes galaxy <strong>shapes</strong> (shear <span class="sym">g</span>) and <strong>sizes and fluxes</strong> (convergence <span class="sym">κ</span>, magnification <span class="sym">μ</span>) by percent-level amounts.</p>
+        <p>A massive halo imprints a <strong>tangential</strong> shear pattern that falls with distance; detecting it requires averaging many galaxies.</p>
+        <p>The PSF dilutes measured shapes, and shear changes which galaxies are detected. Both must be calibrated: that is the <strong>shear response</strong>, which we measure on real Rubin data in Notebook 2.</p>
+    </div>
+  </section>
+
+</main>
+
+<script>
+(() => {
+  'use strict';
+
+  // ------------------------------------------------------------------ helpers
+  const $ = (id) => document.getElementById(id);
+  const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+  const token = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  function hexToRgb(h) {
+    h = h.replace('#', '');
+    if (h.length === 3) h = h.split('').map((c) => c + c).join('');
+    const n = parseInt(h, 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+  const rgbStr = (c, a = 1) => `rgba(${Math.round(c[0])},${Math.round(c[1])},${Math.round(c[2])},${a})`;
+  const lerp3 = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+  function ramp(stops, t) {
+    t = clamp(t, 0, 1);
+    const n = stops.length - 1, x = t * n, i = Math.min(n - 1, Math.floor(x));
+    return lerp3(stops[i], stops[i + 1], x - i);
+  }
+  const MAGMA = ['#000004', '#3B0F70', '#8C2981', '#DE4968', '#FE9F6D', '#FCFDBF'].map(hexToRgb);
+  const RDBU = ['#2166AC', '#92C5DE', '#F7F7F7', '#F4A582', '#B2182B'].map(hexToRgb);
+  const SKY = ['#F7F8FA', '#1B212B'].map(hexToRgb);
+  const HEAT = ['#FFE08A', '#F7A23B', '#C8332B'].map(hexToRgb);
+  const FOOT = ['#1F77B4', '#FF7F0E', '#2CA02C', '#D62728', '#9467BD', '#8C564B', '#E377C2', '#BCBD22', '#17BECF'].map(hexToRgb);
+  const SUP = { '-': '⁻', '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹' };
+  const sup = (n) => String(n).split('').map((c) => SUP[c] || c).join('');
+  const signed = (v, d) => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(d);
+
+  function mulberry32(a) {
+    return function () {
+      a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  const normalFrom = (rand) => () => {
+    const u = 1 - rand(), v = rand();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  };
+
+  function setupCanvas(cv) {
+    const dpr = window.devicePixelRatio || 1;
+    const w = cv.clientWidth, h = cv.clientHeight;
+    const W = Math.max(1, Math.round(w * dpr)), H = Math.max(1, Math.round(h * dpr));
+    if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
+    const ctx = cv.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    return { ctx, w, h };
+  }
+  function scheduler(fn) {
+    let queued = false;
+    return () => {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(() => { queued = false; fn(); });
+    };
+  }
+
+  // ------------------------------------------------------------------ imaging
+  const PIX = 0.2;                         // arcsec per pixel
+  const EXP_HLR_TO_RS = 1.6783469900166605; // half-light radius / scale radius of an exponential
+  const PSF_FWHM = 0.7, PSF_BETA = 3.5, PSF_R = 12;
+
+  function moffatKernel(R) {
+    const alpha = PSF_FWHM / (2 * Math.sqrt(Math.pow(2, 1 / PSF_BETA) - 1));
+    const n = 2 * R + 1, k = new Float64Array(n * n);
+    let s = 0;
+    for (let j = 0; j < n; j++) {
+      for (let i = 0; i < n; i++) {
+        let v = 0;
+        for (let b = 0; b < 3; b++) {
+          for (let a = 0; a < 3; a++) {
+            const x = (i - R + (a - 1) / 3) * PIX, y = (j - R + (b - 1) / 3) * PIX;
+            v += Math.pow(1 + (x * x + y * y) / (alpha * alpha), -PSF_BETA);
+          }
+        }
+        k[j * n + i] = v;
+        s += v;
+      }
+    }
+    for (let q = 0; q < k.length; q++) k[q] /= s;
+    return { R, k };
+  }
+  const GAL_PSF = moffatKernel(PSF_R);   // 2.4" radius for the single galaxy
+  const SCENE_PSF = moffatKernel(9);     // 1.8" radius (>99% of the flux) for the big patch
+
+  function convolvePsf(pad, Nx, nx, ny, psf) {
+    const KERNEL = psf.k, n = 2 * psf.R + 1, out = new Float64Array(nx * ny);
+    for (let j = 0; j < ny; j++) {
+      for (let i = 0; i < nx; i++) {
+        let s = 0;
+        for (let b = 0; b < n; b++) {
+          const row = (j + b) * Nx + i, krow = b * n;
+          for (let a = 0; a < n; a++) s += pad[row + a] * KERNEL[krow + a];
+        }
+        out[j * nx + i] = s;
+      }
+    }
+    return out;
+  }
+
+  // add a surface-brightness profile sb(x, y) [flux / arcsec^2] to an Nx x Ny grid (3x3 subsampling)
+  function addProfile(pad, Nx, Ny, sb, box) {
+    const cx = (Nx - 1) / 2, cy = (Ny - 1) / 2, area = PIX * PIX / 9;
+    let i0 = 0, i1 = Nx - 1, j0 = 0, j1 = Ny - 1;
+    if (box) {
+      i0 = Math.max(0, Math.floor(box.x0 / PIX + cx)); i1 = Math.min(Nx - 1, Math.ceil(box.x1 / PIX + cx));
+      j0 = Math.max(0, Math.floor(box.y0 / PIX + cy)); j1 = Math.min(Ny - 1, Math.ceil(box.y1 / PIX + cy));
+    }
+    for (let j = j0; j <= j1; j++) {
+      for (let i = i0; i <= i1; i++) {
+        let v = 0;
+        for (let b = 0; b < 3; b++) {
+          for (let a = 0; a < 3; a++) v += sb((i - cx + (a - 1) / 3) * PIX, (j - cy + (b - 1) / 3) * PIX);
+        }
+        pad[j * Nx + i] += v * area;
+      }
+    }
+  }
+  function renderProfiles(nx, profiles, usePsf, psf = GAL_PSF, ny = nx) {
+    const R = usePsf ? psf.R : 0, Nx = nx + 2 * R, Ny = ny + 2 * R, pad = new Float64Array(Nx * Ny);
+    for (const p of profiles) addProfile(pad, Nx, Ny, p.sb, p.box);
+    return usePsf ? convolvePsf(pad, Nx, nx, ny, psf) : pad;
+  }
+
+  // exponential disk; Minv maps an image-plane offset to source-plane coordinates
+  function expProfile(flux, hlr, Minv, x0 = 0, y0 = 0) {
+    const rs = hlr / EXP_HLR_TO_RS, norm = flux / (2 * Math.PI * rs * rs);
+    const [a, b, c, d] = Minv;
+    return (x, y) => {
+      const dx = x - x0, dy = y - y0, u = a * dx + b * dy, v = c * dx + d * dy;
+      return norm * Math.exp(-Math.sqrt(u * u + v * v) / rs);
+    };
+  }
+  // inverse of an area-preserving shear by reduced shear (g1, g2)
+  function shearInv(g1, g2) {
+    const f = 1 / Math.sqrt(1 - g1 * g1 - g2 * g2);
+    return [f * (1 - g1), -f * g2, -f * g2, f * (1 + g1)];
+  }
+  const matMul = (A, B) => [A[0] * B[0] + A[1] * B[2], A[0] * B[1] + A[1] * B[3],
+                            A[2] * B[0] + A[3] * B[2], A[2] * B[1] + A[3] * B[3]];
+  function distortionToShear(e1, e2) {
+    const e = Math.hypot(e1, e2);
+    if (e === 0) return [0, 0];
+    const g = e / (1 + Math.sqrt(1 - e * e));
+    return [g * e1 / e, g * e2 / e];
+  }
+
+  // adaptive (elliptical Gaussian-weighted) moments, as in GalSim's HSM
+  function adaptiveMoments(img, nx) {
+    let xc = (nx - 1) / 2, yc = (nx - 1) / 2, mxx = 9, myy = 9, mxy = 0;   // pixel^2
+    for (let it = 0; it < 200; it++) {
+      const det = mxx * myy - mxy * mxy, ixx = myy / det, iyy = mxx / det, ixy = -mxy / det;
+      let s0 = 0, sx = 0, sy = 0, sxx = 0, syy = 0, sxy = 0;
+      for (let j = 0; j < nx; j++) {
+        const dy = j - yc;
+        for (let i = 0; i < nx; i++) {
+          const dx = i - xc, q = ixx * dx * dx + 2 * ixy * dx * dy + iyy * dy * dy;
+          if (q > 36) continue;
+          const w = Math.exp(-0.5 * q) * img[j * nx + i];
+          s0 += w; sx += w * dx; sy += w * dy; sxx += w * dx * dx; syy += w * dy * dy; sxy += w * dx * dy;
+        }
+      }
+      if (!(s0 > 0)) return null;
+      const mx = sx / s0, my = sy / s0;
+      const nxx = 2 * (sxx / s0 - mx * mx), nyy = 2 * (syy / s0 - my * my), nxy = 2 * (sxy / s0 - mx * my);
+      const change = Math.abs(nxx - mxx) + Math.abs(nyy - myy) + Math.abs(nxy - mxy) + Math.abs(mx) + Math.abs(my);
+      xc += mx; yc += my; mxx = nxx; myy = nyy; mxy = nxy;
+      if (!(mxx > 0 && myy > 0 && mxx * myy > mxy * mxy)) return null;
+      if (change < 1e-8) break;
+    }
+    const tr = mxx + myy, [g1, g2] = distortionToShear((mxx - myy) / tr, 2 * mxy / tr);
+    let flux = 0;
+    for (let q = 0; q < img.length; q++) flux += img[q];
+    return { g1, g2, sigma: Math.pow(mxx * myy - mxy * mxy, 0.25) * PIX,
+             x: (xc - (nx - 1) / 2) * PIX, y: (yc - (nx - 1) / 2) * PIX, flux };
+  }
+
+  // paint an nx x ny array (row 0 = bottom) into a canvas with the same aspect ratio
+  function paintArray(cv, data, nx, colorOf, ny = nx) {
+    const { ctx, w, h } = setupCanvas(cv);
+    const off = document.createElement('canvas');
+    off.width = nx; off.height = ny;
+    const octx = off.getContext('2d'), im = octx.createImageData(nx, ny);
+    for (let j = 0; j < ny; j++) {
+      for (let i = 0; i < nx; i++) {
+        const c = colorOf(data[j * nx + i], j * nx + i), p = ((ny - 1 - j) * nx + i) * 4;
+        im.data[p] = c[0]; im.data[p + 1] = c[1]; im.data[p + 2] = c[2]; im.data[p + 3] = 255;
+      }
+    }
+    octx.putImageData(im, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(off, 0, 0, w, h);
+    const s = w / (nx * PIX);                              // canvas px per arcsec
+    return { ctx, w, h, X: (x) => w / 2 + x * s, Y: (y) => h / 2 - y * s, s };
+  }
+  function scaleBar(p, arcsec, light) {
+    const { ctx, h, s } = p, x0 = 10, y0 = h - 12, L = arcsec * s;
+    ctx.save();
+    ctx.strokeStyle = light ? 'rgba(255,255,255,0.9)' : 'rgba(20,24,32,0.85)';
+    ctx.fillStyle = ctx.strokeStyle;
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x0 + L, y0); ctx.stroke();
+    ctx.font = '11px "JetBrains Mono", ui-monospace, monospace';
+    ctx.fillText(arcsec + '″', x0, y0 - 6);
+    ctx.restore();
+  }
+  function ellipseParams(g1, g2, size) {
+    const g = Math.hypot(g1, g2), q = (1 - g) / (1 + g);
+    return { a: size / Math.sqrt(q), b: size * Math.sqrt(q), ang: 0.5 * Math.atan2(g2, g1) };
+  }
+
+  // ------------------------------------------------------------------ Part 1: one galaxy
+  const G = { nx: 48, hlr: 0.7, refCache: {} };
+  const galaxyRef = (psf) => (G.refCache[psf] ||= renderProfiles(G.nx, [{ sb: expProfile(1, G.hlr, [1, 0, 0, 1]) }], psf));
+
+  function drawGalaxy() {
+    const g1 = +$('g1').value, g2 = +$('g2').value, k = +$('kappa').value, psf = $('psf').checked;
+    $('g1-out').textContent = signed(g1, 2);
+    $('g2-out').textContent = signed(g2, 2);
+    $('kappa-out').textContent = signed(k, 3);
+    const mu = 1 / ((1 - k) * (1 - k) * (1 - g1 * g1 - g2 * g2));
+    const gam1 = g1 * (1 - k), gam2 = g2 * (1 - k);
+    const A = [1 - k - gam1, -gam2, -gam2, 1 - k + gam1];          // image -> source
+    const ref = galaxyRef(psf);
+    const img = renderProfiles(G.nx, [{ sb: expProfile(1, G.hlr, A) }], psf);
+    let vmax = 0;
+    for (const v of ref) vmax = Math.max(vmax, v);
+    const diff = img.map((v, q) => v - ref[q]);
+    let dmax = 1e-4 * vmax;
+    for (const v of diff) dmax = Math.max(dmax, Math.abs(v));
+
+    const m0 = adaptiveMoments(ref, G.nx), m1 = adaptiveMoments(img, G.nx);
+    const mag = (v) => ramp(MAGMA, v / vmax);
+    [[$('gal-ref'), ref, m0], [$('gal-len'), img, m1]].forEach(([cv, data, m]) => {
+      const p = paintArray(cv, data, G.nx, mag);
+      if (m) {
+        const e = ellipseParams(m.g1, m.g2, 2 * m.sigma);
+        p.ctx.strokeStyle = '#4FE3F0';
+        p.ctx.lineWidth = 1.6;
+        p.ctx.beginPath();
+        p.ctx.ellipse(p.X(m.x), p.Y(m.y), e.a * p.s, e.b * p.s, -e.ang, 0, 2 * Math.PI);
+        p.ctx.stroke();
+      }
+      scaleBar(p, 1, true);
+    });
+    const pd = paintArray($('gal-dif'), diff, G.nx, (v) => ramp(RDBU, 0.5 + 0.5 * v / dmax));
+    scaleBar(pd, 1, false);
+    $('dif-cap').textContent = `lensed − original · max ${(100 * dmax / vmax).toFixed(1)}% of peak`;
+
+    $('ap-g1').textContent = signed(g1, 3);
+    $('ap-g2').textContent = signed(g2, 3);
+    $('ap-mu').textContent = `κ = ${signed(k, 3)}, μ = ${mu.toFixed(3)}`;
+    [['m0', m0], ['m1', m1]].forEach(([id, m]) => {
+      $(id + '-g1').textContent = m ? signed(m.g1, 3) : '–';
+      $(id + '-g2').textContent = m ? signed(m.g2, 3) : '–';
+      $(id + '-s').textContent = m ? m.sigma.toFixed(3) : '–';
+      $(id + '-f').textContent = m ? m.flux.toFixed(3) : '–';
+    });
+  }
+  const scheduleGalaxy = scheduler(drawGalaxy);
+  ['g1', 'g2', 'kappa'].forEach((id) => $(id).addEventListener('input', scheduleGalaxy));
+  $('psf').addEventListener('change', scheduleGalaxy);
+
+  // ------------------------------------------------------------------ Part 2: NFW halo (GalSim NFWHalo formulas)
+  const OM = 0.3, OL = 0.7, ZL = 0.3, ZS = 1.0, CONC = 4.0, FIELD = 600, NG = 15;
+  const E = (a) => Math.sqrt(OM * Math.pow(a, -3) + OL);
+  function Da(z, zref = 0) {                               // angular diameter distance in c/H0
+    const n = 400, lo = 1 + zref, hi = 1 + z, h = (hi - lo) / n;
+    if (h === 0) return 0;
+    let s = 0;
+    for (let i = 0; i <= n; i++) {
+      const w = (i === 0 || i === n) ? 1 : (i % 2 ? 4 : 2);
+      s += w / E(1 / (lo + i * h));
+    }
+    return s * h / 3 / (1 + z);
+  }
+  const omegaM = (a) => OM / (E(a) * E(a) * a * a * a);
+  const DL = Da(ZL), DS = Da(ZS), DLS = Da(ZS, ZL);
+
+  function makeHalo(M) {
+    const a = 1 / (1 + ZL);
+    const R200 = 1.63e-5 / (1 + ZL) * Math.pow(M * omegaM(a) / omegaM(1), 0.3333);   // Mpc/h
+    const rs = R200 / CONC;
+    const rsArcsec = rs / (DL * 3000) * 206265;
+    const d0 = 200 / 3 * Math.pow(CONC, 3) / (Math.log(1 + CONC) - CONC / (1 + CONC));
+    const rhoS = 2.7722e11 * E(a) * E(a) * d0;
+    const ks = DLS * DL / DS * rs * rhoS / 5.5444e14;
+    return { rsArcsec, ks };
+  }
+  function farcth(x) {
+    if (x < 0.999) { const a = Math.sqrt((1 - x) / (x + 1)); return 0.5 * Math.log((1 + a) / (1 - a)) / Math.sqrt(1 - x * x); }
+    if (x > 1.001) { const a = Math.sqrt((x - 1) / (x + 1)); return Math.atan(a) / Math.sqrt(x * x - 1); }
+    return 5 / 6 - x / 3;
+  }
+  function nfwKappa(x, ks) {
+    if (x < 0.999) { const a = Math.sqrt((1 - x) / (x + 1)); return 2 * ks / (x * x - 1) * (1 - Math.log((1 + a) / (1 - a)) / Math.sqrt(1 - x * x)); }
+    if (x > 1.001) { const a = Math.sqrt((x - 1) / (x + 1)); return 2 * ks / (x * x - 1) * (1 - 2 * Math.atan(a) / Math.sqrt(x * x - 1)); }
+    return ks * (22 / 15 - 0.8 * x);
+  }
+  function nfwGamma(x, ks) {
+    if (x > 0.01) return 4 * ks * (Math.log(x / 2) + 2 * farcth(x)) / (x * x) - nfwKappa(x, ks);
+    return 4 * ks * (0.25 + 0.125 * x * x * (3.25 + 3 * Math.log(x / 2)));
+  }
+  // reduced shear (g1, g2), magnification and convergence at offset (dx, dy) arcsec from the lens
+  function nfwLensing(halo, dx, dy) {
+    const r2 = dx * dx + dy * dy, x = Math.max(Math.sqrt(r2) / halo.rsArcsec, 1e-6);
+    const k = nfwKappa(x, halo.ks), gam = nfwGamma(x, halo.ks), g = gam / (1 - k);
+    const c2 = r2 > 0 ? (dx * dx - dy * dy) / r2 : 0, s2 = r2 > 0 ? 2 * dx * dy / r2 : 0;
+    return { g1: -g * c2, g2: -g * s2, mu: 1 / ((1 - k) * (1 - k) - gam * gam), kappa: k };
+  }
+  function tangentialShear(halo, r) {
+    const L = nfwLensing(halo, r, 0), g = -L.g1;
+    return (Math.abs(g) >= 1 || L.mu <= 0) ? NaN : g;
+  }
+
+  const fieldState = { map: null, dragging: false };
+  const spacing = FIELD / NG, R0 = 0.3 * spacing;
+  const gridPts = [];
+  for (let j = 0; j < NG; j++) for (let i = 0; i < NG; i++) gridPts.push([(i + 0.5) * spacing - FIELD / 2, (j + 0.5) * spacing - FIELD / 2]);
+  const massValue = () => Math.pow(10, +$('mass').value);
+  const ampValue = () => +document.querySelector('input[name="amp"]:checked').value;
+  function formatMass(M) {
+    const e = Math.floor(Math.log10(M) + 1e-9), m = M / Math.pow(10, e);
+    return `${m.toFixed(1)} × 10${sup(e)} M☉/h`;
+  }
+
+  function axisFrame(ctx, x0, y0, w, h, ink) {
+    ctx.strokeStyle = ink; ctx.lineWidth = 1;
+    ctx.strokeRect(x0 + 0.5, y0 + 0.5, w - 1, h - 1);
+  }
+
+  function drawField() {
+    const cv = $('field'), { ctx, w, h } = setupCanvas(cv);
+    const ink = token('--ink'), soft = token('--ink-soft'), rule = token('--rule');
+    const bg = hexToRgb(token('--plot-bg')), hi = hexToRgb(token('--kappa-hi'));
+    const ml = 44, mr = 8, mt = 8, mb = 36;
+    const size = Math.max(10, Math.min(w - ml - mr, h - mt - mb)), s = size / FIELD;
+    const x0 = ml, y0 = mt;
+    const X = (x) => x0 + (x + FIELD / 2) * s, Y = (y) => y0 + (FIELD / 2 - y) * s;
+    fieldState.map = { x0, y0, s, size };
+
+    const M = massValue(), amp = ampValue(), halo = makeHalo(M);
+    const lx = +$('lx').value, ly = +$('ly').value;
+
+    // convergence background
+    const KN = 120, off = document.createElement('canvas');
+    off.width = KN; off.height = KN;
+    const octx = off.getContext('2d'), im = octx.createImageData(KN, KN);
+    for (let j = 0; j < KN; j++) {
+      for (let i = 0; i < KN; i++) {
+        const x = (i + 0.5) / KN * FIELD - FIELD / 2, y = FIELD / 2 - (j + 0.5) / KN * FIELD;
+        const r = Math.max(Math.hypot(x - lx, y - ly) / halo.rsArcsec, 1e-6);
+        const t = clamp((Math.log10(Math.max(nfwKappa(r, halo.ks), 1e-6)) + 3) / 3, 0, 1);
+        const c = lerp3(bg, hi, Math.pow(t, 0.9)), p = (j * KN + i) * 4;
+        im.data[p] = c[0]; im.data[p + 1] = c[1]; im.data[p + 2] = c[2]; im.data[p + 3] = 255;
+      }
+    }
+    octx.putImageData(im, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(off, x0, y0, size, size);
+
+    // lensed round galaxies
+    let gmaxWeak = 0, nStrong = 0;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(x0, y0, size, size); ctx.clip();
+    ctx.lineWidth = 0.7;
+    ctx.strokeStyle = 'rgba(30,24,20,0.75)';
+    for (const [gx, gy] of gridPts) {
+      const L = nfwLensing(halo, gx - lx, gy - ly);
+      const gmag = Math.hypot(L.g1, L.g2), strong = gmag >= 1 || L.mu <= 0;
+      let a = R0, b = R0, ang = 0, fill;
+      if (strong) {
+        nStrong++;
+        fill = 'rgb(150,155,165)';
+      } else {
+        gmaxWeak = Math.max(gmaxWeak, gmag);
+        let d1 = amp * L.g1, d2 = amp * L.g2;
+        const gd = Math.hypot(d1, d2);
+        if (gd > 0.9) { d1 *= 0.9 / gd; d2 *= 0.9 / gd; }
+        const mud = clamp(1 + amp * (L.mu - 1), 0.3, 2.5);
+        const e = ellipseParams(d1, d2, R0 * Math.sqrt(mud));
+        a = e.a; b = e.b; ang = e.ang;
+        fill = rgbStr(ramp(HEAT, gmag * amp / 0.3));
+      }
+      ctx.beginPath();
+      ctx.ellipse(X(gx), Y(gy), a * s, b * s, -ang, 0, 2 * Math.PI);
+      ctx.fillStyle = fill;
+      ctx.fill();
+      ctx.stroke();
+    }
+    // lens marker
+    const sx = X(lx), sy = Y(ly);
+    ctx.beginPath();
+    for (let q = 0; q < 10; q++) {
+      const rr = q % 2 ? 5 : 12, th = -Math.PI / 2 + q * Math.PI / 5;
+      ctx.lineTo(sx + rr * Math.cos(th), sy + rr * Math.sin(th));
+    }
+    ctx.closePath();
+    ctx.fillStyle = '#D7263D';
+    ctx.fill();
+    ctx.lineWidth = 1.2;
+    ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+    ctx.stroke();
+    ctx.restore();
+
+    // axes
+    axisFrame(ctx, x0, y0, size, size, rule);
+    ctx.fillStyle = soft;
+    ctx.font = '11px "JetBrains Mono", ui-monospace, monospace';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    for (let v = -300; v <= 300; v += 150) ctx.fillText(String(v), X(v), y0 + size + 5);
+    ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    for (let v = -300; v <= 300; v += 150) ctx.fillText(String(v), x0 - 6, Y(v));
+    ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = ink;
+    ctx.fillText('x, y [arcsec]', x0 + size / 2, y0 + size + 32);
+
+    $('field-info').innerHTML = `Largest weak shear on the grid: <span class="mono">|g| = ${gmaxWeak.toFixed(3)}</span>. ` +
+      (nStrong ? `<span class="mono">${nStrong}</span> galaxies are strongly lensed (grey).` : 'No galaxies are strongly lensed.');
+  }
+
+  function drawProfile() {
+    const cv = $('profile'), { ctx, w, h } = setupCanvas(cv);
+    const ink = token('--ink'), soft = token('--ink-soft'), grid = token('--plot-grid'), rule = token('--rule');
+    const accent = token('--accent'), bg = token('--plot-bg');
+    const ml = 50, mr = 46, mt = 10, mb = 40, pw = w - ml - mr, ph = h - mt - mb;
+    const LX = [Math.log10(3), Math.log10(600)], LY = [-4, Math.log10(1.5)];
+    const X = (r) => ml + (Math.log10(r) - LX[0]) / (LX[1] - LX[0]) * pw;
+    const Y = (g) => mt + (LY[1] - Math.log10(g)) / (LY[1] - LY[0]) * ph;
+
+    ctx.fillStyle = bg; ctx.fillRect(ml, mt, pw, ph);
+    ctx.strokeStyle = grid; ctx.lineWidth = 1;
+    ctx.font = '11px "JetBrains Mono", ui-monospace, monospace';
+    ctx.fillStyle = soft;
+    for (let e = -4; e <= 0; e++) {
+      const y = Y(Math.pow(10, e));
+      ctx.beginPath(); ctx.moveTo(ml, y); ctx.lineTo(ml + pw, y); ctx.stroke();
+      ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      ctx.fillText(e === 0 ? '1' : '10' + sup(e), ml - 6, y);
+    }
+    for (const r of [10, 100]) {
+      const x = X(r);
+      ctx.beginPath(); ctx.moveTo(x, mt); ctx.lineTo(x, mt + ph); ctx.stroke();
+    }
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    for (const r of [3, 10, 30, 100, 300, 600]) ctx.fillText(r + '″', X(r), mt + ph + 5);
+    ctx.fillStyle = ink;
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText('distance from the lens r', ml + pw / 2, mt + ph + 34);
+
+    ctx.save();
+    ctx.beginPath(); ctx.rect(ml, mt, pw, ph); ctx.clip();
+    // noise levels
+    ctx.strokeStyle = soft; ctx.lineWidth = 1.2;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath(); ctx.moveTo(ml, Y(0.26)); ctx.lineTo(ml + pw, Y(0.26)); ctx.stroke();
+    ctx.setLineDash([2, 3]);
+    ctx.beginPath(); ctx.moveTo(ml, Y(0.0026)); ctx.lineTo(ml + pw, Y(0.0026)); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = soft; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+    ctx.font = '10.5px "Source Sans 3", system-ui, sans-serif';
+    ctx.fillText('one galaxy: shape scatter σₑ ≈ 0.26', ml + 6, Y(0.26) - 3);
+    ctx.fillText('averaged over 10⁴ galaxies', ml + 6, Y(0.0026) - 3);
+
+    const rs = [];
+    for (let q = 0; q <= 140; q++) rs.push(Math.pow(10, LX[0] + (LX[1] - LX[0]) * q / 140));
+    const curve = (M) => {
+      const halo = makeHalo(M);
+      ctx.beginPath();
+      let pen = false;
+      for (const r of rs) {
+        const g = tangentialShear(halo, r);
+        if (!(g > 0)) { pen = false; continue; }
+        if (pen) ctx.lineTo(X(r), Y(g)); else ctx.moveTo(X(r), Y(g));
+        pen = true;
+      }
+      ctx.stroke();
+      return tangentialShear(halo, 600);
+    };
+    const refs = [1e12, 1e13, 1e14, 1e15, 5e15];
+    ctx.strokeStyle = soft; ctx.globalAlpha = 0.45; ctx.lineWidth = 1;
+    const ends = refs.map((M) => curve(M));
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = accent; ctx.lineWidth = 2.6;
+    curve(massValue());
+    ctx.restore();
+
+    // labels for the reference curves at the right edge
+    ctx.fillStyle = soft; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.font = '10px "JetBrains Mono", ui-monospace, monospace';
+    refs.forEach((M, q) => {
+      if (!(ends[q] >= 1e-4)) return;
+      const e = Math.floor(Math.log10(M) + 1e-9), m = M / Math.pow(10, e);
+      ctx.fillText((m > 1.5 ? m.toFixed(0) + '×' : '') + '10' + sup(e), ml + pw + 4, Y(ends[q]));
+    });
+    axisFrame(ctx, ml, mt, pw, ph, rule);
+    ctx.save();
+    ctx.translate(14, mt + ph / 2); ctx.rotate(-Math.PI / 2);
+    ctx.fillStyle = ink; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = '12px "Source Sans 3", system-ui, sans-serif';
+    ctx.fillText('tangential shear gₜ', 0, 0);
+    ctx.restore();
+  }
+
+  function updateHaloOutputs() {
+    $('mass-out').textContent = formatMass(massValue());
+    $('lx-out').textContent = $('lx').value + '″';
+    $('ly-out').textContent = $('ly').value + '″';
+  }
+  const scheduleField = scheduler(drawField);
+  const scheduleProfile = scheduler(drawProfile);
+  $('mass').addEventListener('input', () => { updateHaloOutputs(); scheduleField(); scheduleProfile(); });
+  ['lx', 'ly'].forEach((id) => $(id).addEventListener('input', () => { updateHaloOutputs(); scheduleField(); }));
+  document.querySelectorAll('input[name="amp"]').forEach((el) => el.addEventListener('change', scheduleField));
+
+  function pointerToField(ev, force) {
+    const m = fieldState.map;
+    if (!m) return null;
+    const rect = $('field').getBoundingClientRect();
+    const x = (ev.clientX - rect.left - m.x0) / m.s - FIELD / 2;
+    const y = FIELD / 2 - (ev.clientY - rect.top - m.y0) / m.s;
+    if (!force && (Math.abs(x) > FIELD / 2 || Math.abs(y) > FIELD / 2)) return null;
+    return { x: clamp(Math.round(x), -300, 300), y: clamp(Math.round(y), -300, 300) };
+  }
+  function moveLens(p) {
+    $('lx').value = p.x;
+    $('ly').value = p.y;
+    updateHaloOutputs();
+    scheduleField();
+  }
+  const fieldCv = $('field');
+  fieldCv.addEventListener('pointerdown', (ev) => {
+    const p = pointerToField(ev, false);
+    if (!p) return;
+    fieldState.dragging = true;
+    try { fieldCv.setPointerCapture(ev.pointerId); } catch (e) { /* capture is optional */ }
+    moveLens(p);
+    ev.preventDefault();
+  });
+  fieldCv.addEventListener('pointermove', (ev) => {
+    if (fieldState.dragging) moveLens(pointerToField(ev, true));
+  });
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((t) => fieldCv.addEventListener(t, () => { fieldState.dragging = false; }));
+  fieldCv.addEventListener('keydown', (ev) => {
+    const step = ev.shiftKey ? 50 : 10, d = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, step], ArrowDown: [0, -step] }[ev.key];
+    if (!d) return;
+    ev.preventDefault();
+    moveLens({ x: clamp(+$('lx').value + d[0], -300, 300), y: clamp(+$('ly').value + d[1], -300, 300) });
+  });
+
+  // ------------------------------------------------------------------ Part 3: blending
+  const BOX_W = 64, BOX_H = 32, NBX = Math.round(BOX_W / PIX), NBY = Math.round(BOX_H / PIX);
+  const NOISE = 1.0, N_PAIRS = 16, N_SINGLE = 3, MIN_GAP = 6.3;
+  const NO_GALAXY = [150, 155, 165];
+  const sceneState = { seed: 1, gals: null, noise: null, base: null };
+
+  function makeScene(seed) {
+    const rand = mulberry32(seed), normal = normalFrom(rand), uni = (a, b) => a + (b - a) * rand();
+    const one = (x, y) => {
+      let e1 = 0.08 * normal(), e2 = 0.08 * normal();
+      const e = Math.hypot(e1, e2);
+      if (e > 0.8) { e1 *= 0.8 / e; e2 *= 0.8 / e; }
+      return { x, y, hlr: uni(0.45, 0.55), flux: uni(300, 600), e1, e2 };
+    };
+    let centres = [], tries = 0;
+    while (centres.length < N_PAIRS + N_SINGLE) {
+      const c = [uni(-0.46 * BOX_W, 0.46 * BOX_W), uni(-0.40 * BOX_H, 0.40 * BOX_H)];
+      tries++;
+      if (centres.every((q) => Math.hypot(c[0] - q[0], c[1] - q[1]) > MIN_GAP)) centres.push(c);
+      else if (tries > 400) { centres = []; tries = 0; }
+    }
+    const gals = [];
+    centres.forEach(([cx, cy], i) => {
+      if (i < N_PAIRS) {
+        const d = uni(1.3, 1.65) / 2, th = uni(0, Math.PI);       // close enough that the light overlaps
+        gals.push(one(cx + d * Math.cos(th), cy + d * Math.sin(th)), one(cx - d * Math.cos(th), cy - d * Math.sin(th)));
+      } else {
+        gals.push(one(cx, cy));
+      }
+    });
+    // each galaxy keeps one colour for the life of the patch; near neighbours get different ones
+    gals.forEach((gl, i) => {
+      const used = new Set();
+      for (let j = 0; j < i; j++) if (Math.hypot(gl.x - gals[j].x, gl.y - gals[j].y) < 9) used.add(gals[j].color);
+      const start = (i * 4) % FOOT.length;
+      gl.color = start;
+      for (let t = 0; t < FOOT.length; t++) {
+        const c = (start + t) % FOOT.length;
+        if (!used.has(c)) { gl.color = c; break; }
+      }
+    });
+    return gals;
+  }
+  function noiseField(seed) {
+    const normal = normalFrom(mulberry32((seed * 2654435761) ^ 0x5bd1e995)), a = new Float64Array(NBX * NBY);
+    for (let q = 0; q < a.length; q++) a[q] = NOISE * normal();
+    return a;
+  }
+  function renderScene(gals, noise, g1, g2) {
+    const S = shearInv(g1, g2);
+    const profiles = gals.map((gl) => {
+      const [h1, h2] = distortionToShear(gl.e1, gl.e2);
+      return { sb: expProfile(gl.flux, gl.hlr, matMul(shearInv(h1, h2), S), gl.x, gl.y),
+               box: { x0: gl.x - 5, x1: gl.x + 5, y0: gl.y - 5, y1: gl.y + 5 } };
+    });
+    const img = renderProfiles(NBX, profiles, true, SCENE_PSF, NBY);
+    for (let q = 0; q < img.length; q++) img[q] += noise[q];
+    return img;
+  }
+  function gaussianSmooth(img, nx, ny, sigma) {
+    const R = Math.floor(4 * sigma + 0.5), k = [];
+    let s = 0;
+    for (let i = -R; i <= R; i++) { const v = Math.exp(-0.5 * i * i / (sigma * sigma)); k.push(v); s += v; }
+    for (let i = 0; i < k.length; i++) k[i] /= s;
+    const refl = (i, n) => { const P = 2 * n; i = ((i % P) + P) % P; return i < n ? i : P - 1 - i; };
+    const tmp = new Float64Array(nx * ny), out = new Float64Array(nx * ny);
+    for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+      let v = 0;
+      for (let t = -R; t <= R; t++) v += img[j * nx + refl(i + t, nx)] * k[t + R];
+      tmp[j * nx + i] = v;
+    }
+    for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+      let v = 0;
+      for (let t = -R; t <= R; t++) v += tmp[refl(j + t, ny) * nx + i] * k[t + R];
+      out[j * nx + i] = v;
+    }
+    return out;
+  }
+  // footprints (connected pixels above 5 sigma), peaks, and a colour for each footprint:
+  // the colour of the first galaxy whose centre lies inside it
+  function detect(img, gals) {
+    const sig = (PSF_FWHM / 2.355) / PIX, sm = gaussianSmooth(img, NBX, NBY, sig);
+    const thr = 5 * NOISE / (2 * Math.sqrt(Math.PI) * sig);
+    const labels = new Int32Array(NBX * NBY);
+    let n = 0;
+    for (let p = 0; p < NBX * NBY; p++) {
+      if (sm[p] <= thr || labels[p] !== 0) continue;
+      n++;
+      const members = [p], stack = [p];
+      labels[p] = n;
+      while (stack.length) {
+        const q = stack.pop(), qi = q % NBX, qj = (q - qi) / NBX;
+        const nbrs = [];
+        if (qi > 0) nbrs.push(q - 1);
+        if (qi < NBX - 1) nbrs.push(q + 1);
+        if (qj > 0) nbrs.push(q - NBX);
+        if (qj < NBY - 1) nbrs.push(q + NBX);
+        for (const r of nbrs) {
+          if (labels[r] === 0 && sm[r] > thr) { labels[r] = n; stack.push(r); members.push(r); }
+        }
+      }
+      if (members.length < 5) { for (const q of members) labels[q] = -1; n--; }
+    }
+    const peaks = [];
+    for (let j = 0; j < NBY; j++) for (let i = 0; i < NBX; i++) {
+      const p = j * NBX + i;
+      if (labels[p] <= 0) continue;
+      let isMax = true;
+      for (let b = -2; b <= 2 && isMax; b++) for (let a = -2; a <= 2; a++) {
+        const jj = clamp(j + b, 0, NBY - 1), ii = clamp(i + a, 0, NBX - 1);
+        if (sm[jj * NBX + ii] > sm[p]) { isMax = false; break; }
+      }
+      if (isMax) peaks.push([i, j]);
+    }
+    // a simple deblender: each footprint pixel belongs to its nearest peak in the same footprint
+    const byLabel = new Map();
+    peaks.forEach(([i, j], k) => {
+      const lab = labels[j * NBX + i];
+      if (!byLabel.has(lab)) byLabel.set(lab, []);
+      byLabel.get(lab).push(k);
+    });
+    const child = new Int32Array(NBX * NBY).fill(-1);
+    for (let p = 0; p < NBX * NBY; p++) {
+      const ks = byLabel.get(labels[p]);
+      if (labels[p] <= 0 || !ks) continue;
+      const pi = p % NBX, pj = (p - pi) / NBX;
+      let best = ks[0], bd = Infinity;
+      for (const k of ks) {
+        const d = (peaks[k][0] - pi) ** 2 + (peaks[k][1] - pj) ** 2;
+        if (d < bd) { bd = d; best = k; }
+      }
+      child[p] = best;
+    }
+    // each object takes the colour of a galaxy it sits on; when two galaxies merge into one object,
+    // the lower-numbered one wins, so colours do not flicker
+    const peakColor = peaks.map(([i, j]) => {
+      const x = (i - (NBX - 1) / 2) * PIX, y = (j - (NBY - 1) / 2) * PIX;
+      const d = gals.map((gl) => Math.hypot(gl.x - x, gl.y - y)), dmin = Math.min(...d);
+      if (dmin > 2) return undefined;                       // a noise peak, far from any galaxy
+      return gals[d.findIndex((v) => v < dmin + 0.35)].color;
+    });
+    return { labels, n, peaks, child, peakColor };
+  }
+  function goodSeed(start) {
+    for (let s = start; s < start + 8; s++) {
+      const gals = makeScene(s), noise = noiseField(s), n = gals.length;
+      const k0 = n - detect(renderScene(gals, noise, 0, 0), gals).peaks.length;
+      if (k0 > 4) continue;
+      for (const [a, b] of [[0.3, 0], [0, 0.3], [-0.3, 0]]) {
+        if (n - detect(renderScene(gals, noise, a, b), gals).peaks.length >= k0 + 3) return s;
+      }
+    }
+    return start;
+  }
+  function setScene(seed) {
+    sceneState.seed = seed;
+    sceneState.gals = makeScene(seed);
+    sceneState.noise = noiseField(seed);
+    sceneState.base = null;
+    $('seed').value = seed;
+    scheduleScene();
+  }
+  function drawScene() {
+    const g1 = +$('b-g1').value, g2 = +$('b-g2').value;
+    $('b-g1-out').textContent = signed(g1, 2);
+    $('b-g2-out').textContent = signed(g2, 2);
+    const gals = sceneState.gals;
+    if (!sceneState.base) {          // the unsheared patch fixes the brightness scale and the reference count
+      const img0 = renderScene(gals, sceneState.noise, 0, 0);
+      const sorted = Array.from(img0).sort((a, b) => a - b);
+      sceneState.base = { n: detect(img0, gals).peaks.length, vmax: sorted[Math.floor(0.998 * (sorted.length - 1))] };
+    }
+    const img = renderScene(gals, sceneState.noise, g1, g2), det = detect(img, gals);
+    paintScene($('scene'), img, det, gals, -3 * NOISE, sceneState.base.vmax);
+
+    const nTrue = gals.length, k = nTrue - det.peaks.length, k0 = nTrue - sceneState.base.n;
+    $('scene-counts').textContent = `${nTrue} galaxies · ${det.n} footprints · ${det.peaks.length} detected objects`;
+    const chip = $('scene-chip');
+    chip.className = k > k0 ? 'chip alert' : 'chip ok';
+    chip.textContent = `${k} unresolved pair${k === 1 ? '' : 's'} with this shear · ${k0} without shear`;
+  }
+  function paintScene(cv, img, det, gals, vmin, vmax) {
+    const showSeg = $('show-seg').checked, showMarks = $('show-marks').checked;
+    const p = paintArray(cv, img, NBX, (v, q) => {
+      const base = ramp(SKY, (v - vmin) / (vmax - vmin)), k = det.child[q];
+      if (!showSeg || k < 0) return base;
+      const c = det.peakColor[k];
+      return lerp3(base, c === undefined ? NO_GALAXY : FOOT[c], 0.42);
+    }, NBY);
+    const { ctx } = p;
+    scaleBar(p, 5, false);
+    if (!showMarks) return;
+    const px = (i) => p.X((i - (NBX - 1) / 2) * PIX), py = (j) => p.Y((j - (NBY - 1) / 2) * PIX);
+    const arm = Math.max(3.5, p.s * 0.25), ring = Math.max(6, p.s * 0.45);
+    ctx.lineWidth = 1.8;
+    ctx.strokeStyle = '#D7263D';
+    for (const gl of gals) {
+      const x = p.X(gl.x), y = p.Y(gl.y);
+      ctx.beginPath(); ctx.moveTo(x - arm, y - arm); ctx.lineTo(x + arm, y + arm); ctx.moveTo(x + arm, y - arm); ctx.lineTo(x - arm, y + arm); ctx.stroke();
+    }
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = '#1E88E5';
+    for (const [i, j] of det.peaks) { ctx.beginPath(); ctx.arc(px(i), py(j), ring, 0, 2 * Math.PI); ctx.stroke(); }
+  }
+  const scheduleScene = scheduler(drawScene);
+  ['b-g1', 'b-g2'].forEach((id) => $(id).addEventListener('input', () => sceneState.gals && scheduleScene()));
+  ['show-seg', 'show-marks'].forEach((id) => $(id).addEventListener('change', () => sceneState.gals && scheduleScene()));
+  $('new-scene').addEventListener('click', () => setScene(goodSeed(sceneState.seed + 1)));
+  $('seed').addEventListener('change', () => {
+    const s = Math.max(1, Math.round(+$('seed').value || 1));
+    setScene(s);
+  });
+
+  // ------------------------------------------------------------------ start, resize, theme
+  function drawAll() { drawGalaxy(); drawField(); drawProfile(); if (sceneState.gals) drawScene(); }
+  updateHaloOutputs();
+  drawGalaxy(); drawField(); drawProfile();
+  setTimeout(() => setScene(goodSeed(1)), 30);
+
+  const redraw = { 'gal-ref': scheduleGalaxy, 'gal-len': scheduleGalaxy, 'gal-dif': scheduleGalaxy,
+                   field: scheduleField, profile: scheduleProfile,
+                   scene: () => sceneState.gals && scheduleScene() };
+  if ('ResizeObserver' in window) {
+    const ro = new ResizeObserver((entries) => entries.forEach((e) => redraw[e.target.id] && redraw[e.target.id]()));
+    Object.keys(redraw).forEach((id) => ro.observe($(id)));
+  } else {
+    window.addEventListener('resize', scheduler(drawAll));
+  }
+  const themeRedraw = () => { scheduleField(); scheduleProfile(); };
+  if (window.matchMedia) {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    if (mq.addEventListener) mq.addEventListener('change', themeRedraw);
+  }
+  new MutationObserver(themeRedraw).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { drawField(); drawProfile(); });
+})();
+</script>
+
+</body>
+</html>
