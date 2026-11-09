@@ -15,6 +15,12 @@ Produces, under --output-dir (default: data/ next to this script):
   galaxies.parquet  the final MagLim-style tomographic galaxy sample
   meta.json         the parameters used, so the notebook can check a cached
                      copy still matches its own parameters before loading it
+  stars.parquet     point sources for the stellar-density veto in the mask
+  stars_meta.json   the region and star cuts used for stars.parquet
+  maps/             not written here; the notebook fills it with Butler survey-property
+                     map cutouts the first time it runs
+
+Use --stars-only to (re)fetch just the star sample without redoing the galaxy query.
 
 Run with the same LSST Science Pipelines environment as the notebook kernel:
   source /opt/lsst/software/stack/loadLSST.bash && setup lsst_distrib
@@ -73,6 +79,49 @@ def fetch_objects(service, params):
     obj_df = run_query(service, query).to_pandas()
     print(len(obj_df), 'extended, clean-flag objects in the region')
     return obj_df
+
+
+STAR_PARAM_KEYS = ['ra_center', 'dec_center', 'radius_deg', 'band',
+                   'star_mag_bright', 'star_mag_faint']
+
+
+def star_query_for(params):
+    """ADQL for the point-source sample; the notebook builds the identical query."""
+    return (
+        "SELECT coord_ra, coord_dec "
+        "FROM dp2.Object "
+        "WHERE CONTAINS(POINT('ICRS', coord_ra, coord_dec), "
+        "CIRCLE('ICRS', {ra}, {dec}, {radius})) = 1 "
+        "AND refExtendedness = 0 "
+        "AND {b}_inputCount > 0 "
+        "AND {b}_psfFlux_flag = 0 "
+        "AND {b}_invalidPsfFlag = 0 "
+        "AND {b}_pixelFlags_saturatedCenter = 0 "
+        "AND {b}_pixelFlags_interpolatedCenter = 0 "
+        "AND {b}_psfMag > {bright} "
+        "AND {b}_psfMag < {faint}"
+    ).format(ra=params['ra_center'], dec=params['dec_center'], radius=params['radius_deg'],
+             b=params['band'], bright=params['star_mag_bright'], faint=params['star_mag_faint'])
+
+
+def fetch_stars(service, params):
+    query = star_query_for(params)
+    print(query)
+    star_df = run_query(service, query).to_pandas()
+    print(len(star_df), 'point sources for the stellar density map')
+    return star_df
+
+
+def write_stars(star_df, params, output_dir):
+    stars_path = os.path.join(output_dir, 'stars.parquet')
+    stars_meta_path = os.path.join(output_dir, 'stars_meta.json')
+    star_df.to_parquet(stars_path, index=False)
+    stars_meta = {k: params[k] for k in STAR_PARAM_KEYS}
+    stars_meta['n_stars'] = len(star_df)
+    with open(stars_meta_path, 'w') as f:
+        json.dump(stars_meta, f, indent=2)
+    print('Wrote', stars_path)
+    print('Wrote', stars_meta_path)
 
 
 def join_photoz(obj_df, params):
@@ -147,15 +196,26 @@ def main():
     parser.add_argument('--maglim-intercept', type=float, default=18.0)
     parser.add_argument('--n-zbins', type=int, default=4)
     parser.add_argument('--z-max', type=float, default=1.0)
+    parser.add_argument('--star-mag-bright', type=float, default=17.5)
+    parser.add_argument('--star-mag-faint', type=float, default=21.0)
+    parser.add_argument('--stars-only', action='store_true',
+                        help='only (re)fetch stars.parquet, skipping the galaxy sample')
     parser.add_argument('--output-dir', default=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data'))
     args = parser.parse_args()
 
     params = vars(args).copy()
     output_dir = params.pop('output_dir')
+    stars_only = params.pop('stars_only')
+    star_params = {k: params.pop(k) for k in ['star_mag_bright', 'star_mag_faint']}
     os.makedirs(output_dir, exist_ok=True)
 
     discovery = RSPDiscovery("dp2")
     service = discovery.get_tap_client()
+
+    star_df = fetch_stars(service, dict(params, **star_params))
+    write_stars(star_df, dict(params, **star_params), output_dir)
+    if stars_only:
+        return
 
     obj_df = fetch_objects(service, params)
     obj_df_renamed, clustering_df, pz_code, pz_col = join_photoz(obj_df, params)
