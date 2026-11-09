@@ -62,7 +62,7 @@ Before opening the notebook, in an RSP terminal: `git clone https://github.com/r
 
 Section 2 of the notebook queries ~3.4 million objects over the full ~113 deg² region and joins photo-z — about **6 minutes**, mostly spent waiting on the TAP query rather than on CPU. It only has to happen once: the notebook caches its own result to `week8/data/` (not checked into the repo — it's over GitHub's 100 MB file-size limit) and reuses that cache on every later run. If you'd rather not eat those 6 minutes inside your first read-through, run `python week8/prepare_data.py` once beforehand instead — it does exactly that same step, standalone, and leaves the same cache behind.
 
-### Run Locally
+## Run Locally
 
 To run the notebooks on your own computer:
 
@@ -80,7 +80,7 @@ To run the notebooks on your own computer:
    pip install -r week4/requirements.txt
    ```
 
-3. **Open a notebook** (Week 2 Notebook A or B; the Week 3 notebooks need the RSP):
+3. **Open a notebook** (Week 2 Notebook A or B; the Week 3 and Week 8 notebooks need the RSP instead):
    ```bash
    jupyter notebook week2/A_survey_strategy.ipynb
    jupyter notebook week2/B_camera_to_science.ipynb
