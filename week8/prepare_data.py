@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Pre-fetch the Week 8 clustering sample: query the DP2 Object catalog, join
 photo-z, and apply the MagLim-style cut, exactly as Sections 2-4 of
-week8_galaxy_clustering_wtheta.ipynb do.
+week8_galaxy_clustering.ipynb do.
 
 This is the slow, failure-prone part of the notebook at full scale (the full
 ~113 deg^2 region pulls millions of objects, which pushes past the ~1 million
