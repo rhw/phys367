@@ -1,0 +1,29 @@
+# Environment for the cat2cosmo 3x2pt notebook (cat2cosmo_3x2pt.ipynb).
+#
+#   conda env create -f environment.yml      # use a recent conda (>= 23.10, libmamba solver) or mamba
+#   conda activate cat2cosmo
+#   jupyter lab
+#
+# pip-only alternative (any Python >= 3.10; pyccl ships binary wheels for Linux and macOS):
+#   python -m venv cat2cosmo && source cat2cosmo/bin/activate
+#   pip install numpy scipy matplotlib pyccl derivkit getdist emcee tqdm jupyterlab
+#
+# Tested with: python 3.11, numpy 2.4, scipy 1.17, matplotlib 3.11, pyccl 3.3.6, derivkit 1.5.0,
+#              getdist 1.7.7, emcee 3.1.6.
+name: cat2cosmo
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - numpy>=2
+  - scipy
+  - matplotlib>=3.7
+  - pyccl>=3.1
+  - emcee
+  - tqdm
+  - getdist
+  - jupyterlab
+  - ipykernel
+  - pip
+  - pip:
+      - derivkit>=1.5
