@@ -1,4 +1,4 @@
-Open the bias_explorer.html in a browser and select reset everything to remove all systematics.
+Take a look at any one of the two exercises below. Open the bias_explorer.html in a browser and select reset everything to remove all systematics.
 
 ## Exercise 1: Understanding baryonic feedback in WL constraints
 
